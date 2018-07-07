@@ -73,6 +73,7 @@ int main(int argc, char* argv[])
   // a bunch of URIs.
 
   char const* good_uris[]{
+      "http://www.ics.uci.edu/pub/ietf/uri/#Related",
       "http://-.~_!$&'()*+,;=:%40:80%2f::::::@example.com",
       "ftp://cnn.example.com&story=breaking_news@10.0.0.1/top_story.htm",
       "http://www.ics.uci.edu/pub/ietf/uri/#Related",
