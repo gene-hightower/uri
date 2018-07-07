@@ -24,19 +24,15 @@ bool uri_parse_re(std::string_view uri, uri::components& parts)
   if (what.size() > 9)
     parts.fragment
         = std::string_view(cbegin(uri) + what.position(9), what.length(9));
-
   if (what.size() > 7)
     parts.query
         = std::string_view(cbegin(uri) + what.position(7), what.length(7));
-
   if (what.size() > 5)
     parts.path
         = std::string_view(cbegin(uri) + what.position(5), what.length(5));
-
   if (what.size() > 4)
     parts.authority
         = std::string_view(cbegin(uri) + what.position(4), what.length(4));
-
   if (what.size() > 2)
     parts.scheme
         = std::string_view(cbegin(uri) + what.position(2), what.length(2));
