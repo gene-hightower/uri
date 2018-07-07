@@ -1,0 +1,6 @@
+[submodule "PEGTL"]
+	path = PEGTL
+	url = https://github.com/taocpp/PEGTL.git
+[submodule "MKUltra"]
+	path = MKUltra
+	url = https://github.com/gene-hightower/MKUltra
