@@ -31,6 +31,8 @@ struct components {
   std::string_view fragment;
 };
 
+std::string to_string(uri::components const& uri);
+
 bool parse_generic(std::string_view uri, components& comp);
 bool parse_relative_ref(std::string_view uri, components& comp);
 bool parse_reference(std::string_view uri, components& comp);
@@ -39,6 +41,14 @@ bool parse_absolute(std::string_view uri, components& comp);
 class generic {
 public:
   generic() = default;
+
+  explicit generic(components const& uri)
+    : uri_(to_string(uri))
+  {
+    if (!parse_generic(uri_, parts_)) {
+      throw syntax_error();
+    }
+  }
 
   explicit generic(std::string_view uri)
     : uri_(uri)
@@ -59,15 +69,18 @@ public:
   auto fragment()  const { return parts_.fragment; }
   // clang-format on
 
+  components const& parts() const { return parts_; }
+
 private:
   std::string uri_;
   components parts_;
 };
 
+std::string to_string(uri::generic const& uri);
+
 } // namespace uri
 
+std::ostream& operator<<(std::ostream& os, uri::components const& uri);
 std::ostream& operator<<(std::ostream& os, uri::generic const& uri);
-
-std::string to_string(uri::generic const& uri);
 
 #endif // URI_HPP_INCLUDED

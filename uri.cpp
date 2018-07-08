@@ -61,10 +61,10 @@ struct pct_encoded   : seq<one<'%'>, HEXDIG, HEXDIG> {};
 struct pchar         : sor<unreserved, pct_encoded, sub_delims, one<':'>, one<'@'>> {};
 
 //     fragment      = *( pchar / "/" / "?" )
-struct fragment      : star<sor<pchar, one<'/'>, one<'?'>>> {};
+struct fragment      : star<sor<pchar, one<'/', '?'>>> {};
 
 //     query         = *( pchar / "/" / "?" )
-struct query         : star<sor<pchar, one<'/'>, one<'?'>>> {};
+struct query         : star<sor<pchar, one<'/', '?'>>> {};
 
 //     segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )
 //                   ; non-zero-length segment without any colon ":"
@@ -377,38 +377,48 @@ syntax_error::syntax_error()
 
 syntax_error::~syntax_error() noexcept {}
 
+std::string to_string(uri::components const& uri)
+{
+  std::ostringstream os;
+  os << uri;
+  return os.str();
+}
+
+std::string to_string(uri::generic const& uri)
+{
+  return to_string(uri.parts());
+}
+
 } // namespace uri
 
 // https://tools.ietf.org/html/rfc3986#section-5.3
 
 // 5.3.  Component Recomposition
 
-std::ostream& operator<<(std::ostream& os, uri::generic const& uri)
+std::ostream& operator<<(std::ostream& os, uri::components const& uri)
 {
-  if (!uri.scheme().empty()) {
-    os << uri.scheme() << ':';
+  if (!uri.scheme.empty()) {
+    os << uri.scheme << ':';
   }
 
-  if (!uri.authority().empty()) {
-    os << "//" << uri.authority();
+  if (!uri.authority.empty()) {
+    os << "//" << uri.authority;
   }
 
-  os << uri.path();
+  os << uri.path;
 
-  if (!uri.query().empty()) {
-    os << '?' << uri.query();
+  if (!uri.query.empty()) {
+    os << '?' << uri.query;
   }
 
-  if (!uri.fragment().empty()) {
-    os << '#' << uri.fragment();
+  if (!uri.fragment.empty()) {
+    os << '#' << uri.fragment;
   }
 
   return os;
 }
 
-std::string to_string(uri::generic const& uri)
+std::ostream& operator<<(std::ostream& os, uri::generic const& uri)
 {
-  std::ostringstream os;
-  os << uri;
-  return os.str();
+  return os << uri.parts();
 }
