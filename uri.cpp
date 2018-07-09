@@ -110,11 +110,11 @@ struct reg_name      : star<sor<unreserved, pct_encoded, sub_delims>> {};
 //                   / "1" 2DIGIT            ; 100-199
 //                   / "2" %x30-34 DIGIT     ; 200-249
 //                   / "25" %x30-35          ; 250-255
-struct dec_octet     : sor<DIGIT,
-                           seq<range<'1','9'>, DIGIT>,
-                           seq<one<'1'>, DIGIT, DIGIT>,
+struct dec_octet     : sor<seq<string<'2','5'>, range<'0','5'>>,
                            seq<one<'2'>, range<'0','4'>, DIGIT>,
-                           seq<string<'2','5'>, range<'0','5'>>> {};
+                           seq<one<'1'>, DIGIT, DIGIT>,
+                           seq<range<'1','9'>, DIGIT>,
+                           DIGIT> {};
 
 //     IPv4address   = dec-octet "." dec-octet "." dec-octet "." dec-octet
 struct IPv4address   : seq<dec_octet, one<'.'>, dec_octet, one<'.'>, dec_octet, one<'.'>, dec_octet> {};
