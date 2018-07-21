@@ -1,3 +1,4 @@
+#define BUILDING_DLL
 #include "uri.hpp"
 
 #include <iostream>
@@ -203,6 +204,7 @@ struct URI_eof       : seq<URI, eof> {};
 
 //     URI-reference = URI / relative-ref
 struct URI_reference : sor<URI, relative_ref> {};
+struct URI_reference_eof : sor<URI_reference, eof> {};
 
 // clang-format on
 
@@ -296,39 +298,91 @@ template <> struct action<port> {
 };
 } // namespace RFC3986
 
+// clang-format off
+namespace RFC7230 {
+
+using uri_host = RFC3986::host;
+
+//     obs-text = %x80-FF
+struct obs_text : range<'\x80', '\xFF'> {};
+
+//     qdtext = HTAB / SP / "!" / %x23-5B ; '#'-'['
+//            / %x5D-7E ; ']'-'~'
+//            / obs-text
+struct qdtext : sor<abnf::HTAB, abnf::SP, one<'!'>, range<'#', '['>,
+                    range<']', '~'>,
+                    obs_text> {};
+
+//     quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
+struct quoted_pair : seq<one<'\\'>, sor<abnf::HTAB, abnf::SP, abnf::VCHAR, obs_text>> {};
+
+//     quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+struct quoted_string : seq<abnf::DQUOTE, star<sor<qdtext, quoted_pair>>, abnf::DQUOTE> {};
+
+//     OWS = *( SP / HTAB )
+struct OWS : star<sor<abnf::SP, abnf::HTAB>> {};
+
+using BWS = OWS;
+
+//   tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
+//    "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
+struct tchar : sor<one<'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'>,
+                   abnf::DIGIT,
+                   abnf::ALPHA> {};
+
+//     token = 1*tchar
+struct token : plus<tchar> {};
+
+//     transfer-parameter = token BWS "=" BWS ( token / quoted-string )
+struct transfer_parameter : seq<token, BWS, one<'='>, BWS, sor<token, quoted_string>> {};
+
+} // namespace RFC7230
+// clang-format on
+
 namespace uri {
-bool parse_generic(std::string_view uri, components& parts)
-{
-  auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  /*, tao::pegtl::tracer */
-  if (parse<RFC3986::URI_eof, RFC3986::action>(in, parts)) {
-    return true;
-  }
-  return false;
-}
-
-bool parse_relative_ref(std::string_view uri, components& parts)
-{
-  auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (parse<RFC3986::relative_ref_eof, RFC3986::action>(in, parts)) {
-    return true;
-  }
-  return false;
-}
-
-bool parse_reference(std::string_view uri, components& parts)
+DLL_PUBLIC bool parse(std::string_view uri, components& parts)
 {
   // auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  // if (parse<RFC3986::reference_eof, RFC3986::action>(in, parts)) {
+  // if (tao::pegtl::parse<RFC3986::any_URI_eof, RFC3986::action>(in, parts)) {
   //   return true;
   // }
   return false;
 }
 
-bool parse_absolute(std::string_view uri, components& parts)
+DLL_PUBLIC bool parse_generic(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (parse<RFC3986::absolute_URI_eof, RFC3986::action>(in, parts)) {
+  if (tao::pegtl::parse<RFC3986::URI_eof, RFC3986::action>(in, parts)) {
+    return true;
+  }
+  return false;
+}
+
+DLL_PUBLIC bool parse_relative_ref(std::string_view uri, components& parts)
+{
+  auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
+  if (tao::pegtl::parse<RFC3986::relative_ref_eof, RFC3986::action>(in,
+                                                                    parts)) {
+    return true;
+  }
+  return false;
+}
+
+DLL_PUBLIC bool parse_reference(std::string_view uri, components& parts)
+{
+  auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
+  if (tao::pegtl::parse<RFC3986::URI_reference_eof, RFC3986::action>(in,
+                                                                     parts)) {
+    return true;
+  }
+  return false;
+}
+
+DLL_PUBLIC bool parse_absolute(std::string_view uri, components& parts)
+{
+  auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
+  if (tao::pegtl::parse<RFC3986::absolute_URI_eof, RFC3986::action>(in,
+                                                                    parts)) {
     return true;
   }
   return false;
@@ -350,11 +404,9 @@ char const* category_impl::name() const noexcept
 
 std::string category_impl::message(int ev) const
 {
-  switch (error(ev)) {
+  switch (static_cast<error>(ev)) {
   case error::invalid_syntax:
     return "unable to parse URI";
-  default:
-    break;
   }
   return "unknown URI error";
 }
@@ -395,7 +447,8 @@ std::string to_string(uri::generic const& uri)
 
 // 5.3.  Component Recomposition
 
-std::ostream& operator<<(std::ostream& os, uri::components const& uri)
+DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
+                                    uri::components const& uri)
 {
   if (!uri.scheme.empty()) {
     os << uri.scheme << ':';
@@ -418,7 +471,7 @@ std::ostream& operator<<(std::ostream& os, uri::components const& uri)
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, uri::generic const& uri)
+DLL_PUBLIC std::ostream& operator<<(std::ostream& os, uri::generic const& uri)
 {
   return os << uri.parts();
 }

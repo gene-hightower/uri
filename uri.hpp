@@ -1,6 +1,8 @@
 #ifndef URI_HPP_INCLUDED
 #define URI_HPP_INCLUDED
 
+#include "dll_spec.h"
+
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -12,7 +14,7 @@ enum class error {
   invalid_syntax = 1,
 };
 
-class syntax_error : public std::system_error {
+class DLL_PUBLIC syntax_error : public std::system_error {
 public:
   syntax_error();
   virtual ~syntax_error() noexcept;
@@ -31,12 +33,13 @@ struct components {
   std::string_view fragment;
 };
 
-std::string to_string(uri::components const& uri);
+DLL_PUBLIC std::string to_string(uri::components const& uri);
 
-bool parse_generic(std::string_view uri, components& comp);
-bool parse_relative_ref(std::string_view uri, components& comp);
-bool parse_reference(std::string_view uri, components& comp);
-bool parse_absolute(std::string_view uri, components& comp);
+DLL_PUBLIC bool parse(std::string_view uri, components& comp);
+DLL_PUBLIC bool parse_generic(std::string_view uri, components& comp);
+DLL_PUBLIC bool parse_relative_ref(std::string_view uri, components& comp);
+DLL_PUBLIC bool parse_reference(std::string_view uri, components& comp);
+DLL_PUBLIC bool parse_absolute(std::string_view uri, components& comp);
 
 class generic {
 public:
@@ -73,14 +76,16 @@ public:
 
 private:
   std::string uri_;
+  std::string host_normalized_;
   components parts_;
 };
 
-std::string to_string(uri::generic const& uri);
+DLL_PUBLIC std::string to_string(uri::generic const& uri);
 
 } // namespace uri
 
-std::ostream& operator<<(std::ostream& os, uri::components const& uri);
-std::ostream& operator<<(std::ostream& os, uri::generic const& uri);
+DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
+                                    uri::components const& uri);
+DLL_PUBLIC std::ostream& operator<<(std::ostream& os, uri::generic const& uri);
 
 #endif // URI_HPP_INCLUDED
