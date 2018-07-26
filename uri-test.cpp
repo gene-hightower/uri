@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
   CHECK_EQ(string_view(u + m.position(8), m.length(8)), "#Related");
   CHECK_EQ(string_view(u + m.position(9), m.length(9)), "Related");
 
-  // Next, compare our parsers results vs. the regular expression for
+  // Next, compare our parser's results vs. the regular expression for
   // a bunch of URIs.
 
   char const* good_uris[]{
@@ -78,6 +78,8 @@ int main(int argc, char* argv[])
       "http://example.com/",
       "http://example.com:/",
       "http://example.com:80/",
+      "http://example.com:80",
+      "http://example.com:",
       "foo://example.com:8042/over/there?name=ferret#nose",
       "foo://dude@example.com:8042/over/there?name=ferret#nose",
       "urn:example:animal:ferret:nose",
@@ -125,13 +127,15 @@ int main(int argc, char* argv[])
       "tel:+1-816-555-1212",
       "telnet://192.0.2.16:80/",
       "urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
+      "https://🍔.digilicious.com/",
+      "https://xn--ui8h.digilicious.com/",
   };
 
   for (auto uri : good_uris) {
     uri::components parts;
     CHECK(uri_parse_re(uri, parts));
 
-    uri::generic u{uri};
+    uri::uri u{uri};
 
     CHECK_EQ(parts.scheme, u.scheme());
 
@@ -147,7 +151,17 @@ int main(int argc, char* argv[])
     CHECK_EQ(to_string(u), uri);
   }
 
+  // Verify a bunch of bad URIs all throw exceptions.
+
   char const* bad_uris[]{
+      "http://",
+      "http://.",
+      "http://..",
+      "http://../",
+      "http://?",
+      "http://?\?",
+      "http://?\?/",
+      "http://#",
       "http://##",
       "http://##/",
       "http://foo.bar?q=Spaces should be encoded",
@@ -155,17 +169,40 @@ int main(int argc, char* argv[])
       "//a",
       "///a",
       "///",
+      "http:///a",
       "foo.com",
       "http:// shouldfail.com",
       ":// should fail",
       "http://foo.bar/foo(bar)baz quux",
+      "http://-error-.invalid/",
+      "http://-a.b.co",
+      "http://a.b-.co",
+      "http://1.1.1.1.1",
+      "http://.www.foo.bar/",
+      "http://.www.foo.bar./",
   };
+
+  // I have to confess, I don't know what's wrong with these:
+
+  //  "ftps://foo.bar/",
+  //  "http://a.b--c.de/",
+  //  "rdar://1234",
+  //  "h://test",
+  //  "http://0.0.0.0",
+  //  "http://10.1.1.0",
+  //  "http://10.1.1.255",
+  //  "http://224.1.1.1",
+  //  "http://123.123.123",
+  //  "http://3628126748",
+  //  "http://www.foo.bar./",
+  //  "http://10.1.1.1",
+  //  "http://10.1.1.254",
 
   auto failures = 0;
 
   for (auto uri : bad_uris) {
     try {
-      uri::generic u{uri};
+      uri::uri u{uri};
       LOG(ERROR) << "should not parse \"" << uri << "\" as \"" << u << "\"\n";
       ++failures;
     }
@@ -177,8 +214,10 @@ int main(int argc, char* argv[])
     }
   }
 
+  // Parse all the command line args as URIs.
+
   for (auto i = 1; i < argc; ++i) {
-    uri::generic u{argv[i]};
+    uri::uri u{argv[i]};
 
     std::cout << "scheme()     == " << u.scheme() << '\n';
     std::cout << "authority()  == " << u.authority() << '\n';

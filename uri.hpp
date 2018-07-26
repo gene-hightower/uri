@@ -3,11 +3,26 @@
 
 #include "dll_spec.h"
 
+#include <cctype>
 #include <iostream>
 #include <string>
 #include <string_view>
 
 namespace uri {
+
+inline bool iequal_char(char a, char b)
+{
+  return std::toupper(static_cast<unsigned char>(a))
+         == std::toupper(static_cast<unsigned char>(b));
+}
+
+inline bool iequal(std::string_view a, std::string_view b)
+{
+  if (size(a) == size(b)) {
+    return std::equal(begin(b), end(b), begin(a), iequal_char);
+  }
+  return false;
+}
 
 enum class error {
   // parser errors
@@ -33,32 +48,28 @@ struct components {
   std::string_view fragment;
 };
 
-DLL_PUBLIC std::string to_string(uri::components const& uri);
+DLL_PUBLIC std::string to_string(components const&);
 
-DLL_PUBLIC bool parse(std::string_view uri, components& comp);
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& comp);
 DLL_PUBLIC bool parse_relative_ref(std::string_view uri, components& comp);
 DLL_PUBLIC bool parse_reference(std::string_view uri, components& comp);
 DLL_PUBLIC bool parse_absolute(std::string_view uri, components& comp);
 
-class generic {
+class uri {
 public:
-  generic() = default;
+  uri() = default;
 
-  explicit generic(components const& uri)
-    : uri_(to_string(uri))
+  explicit uri(std::string_view uri_in)
+    : uri_(uri_in)
   {
     if (!parse_generic(uri_, parts_)) {
       throw syntax_error();
     }
   }
 
-  explicit generic(std::string_view uri)
-    : uri_(uri)
+  explicit uri(components const& uri_in)
+    : uri(to_string(uri_in))
   {
-    if (!parse_generic(uri_, parts_)) {
-      throw syntax_error();
-    }
   }
 
   // clang-format off
@@ -76,16 +87,15 @@ public:
 
 private:
   std::string uri_;
-  std::string host_normalized_;
   components parts_;
 };
 
-DLL_PUBLIC std::string to_string(uri::generic const& uri);
+DLL_PUBLIC std::string to_string(uri const&);
 
 } // namespace uri
 
 DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
                                     uri::components const& uri);
-DLL_PUBLIC std::ostream& operator<<(std::ostream& os, uri::generic const& uri);
+DLL_PUBLIC std::ostream& operator<<(std::ostream& os, uri::uri const&);
 
 #endif // URI_HPP_INCLUDED

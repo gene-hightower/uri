@@ -11,11 +11,12 @@ using namespace tao::pegtl;
 using namespace tao::pegtl::abnf;
 
 // clang-format off
-namespace RFC3986 {
+namespace parser {
 
 // Rules are from <https://tools.ietf.org/html/rfc3986#appendix-A>
 
-// The order is mostly reversed here, since we need to define before use.
+// The order is the rules is mostly reversed here, since we need to
+// define them before use.
 
 //     sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
 //                   / "*" / "+" / "," / ";" / "="
@@ -47,7 +48,7 @@ struct UTF8_non_ascii : sor<UTF8_2, UTF8_3, UTF8_4> {};
 //     reserved      = gen-delims / sub-delims
 struct reserved      : sor<gen_delims, sub_delims> {};
 
-// Allowing UTF-8 in the unreserved rule isn't strictly RFC 3987 since we
+// Allowing UTF-8 in the unreserved rule isn't strictly RFC-3987 since we
 // make no attempt to limit the code points to exaclude the private use
 // areas.  See <https://tools.ietf.org/html/rfc3987>
 
@@ -59,7 +60,7 @@ struct unreserved    : sor<ALPHA, DIGIT, one<'-', '.', '_', '~'>, UTF8_non_ascii
 struct pct_encoded   : seq<one<'%'>, HEXDIG, HEXDIG> {};
 
 //     pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
-struct pchar         : sor<unreserved, pct_encoded, sub_delims, one<':'>, one<'@'>> {};
+struct pchar         : sor<unreserved, pct_encoded, sub_delims, one<':', '@'>> {};
 
 //     fragment      = *( pchar / "/" / "?" )
 struct fragment      : star<sor<pchar, one<'/', '?'>>> {};
@@ -97,14 +98,31 @@ struct path_abempty  : star<seq<one<'/'>, segment>> {};
 //                   / path-noscheme   ; begins with a non-colon segment
 //                   / path-rootless   ; begins with a segment
 //                   / path-empty      ; zero characters
-struct path          : sor<path_abempty,
-                           path_absolute,
-                           path_noscheme,
-                           path_rootless,
-                           path_empty> {};
+// struct path       : sor<path_abempty,
+//                         path_absolute,
+//                         path_noscheme,
+//                         path_rootless,
+//                         path_empty> {};
 
-//     reg-name      = *( unreserved / pct-encoded / sub-delims )
-struct reg_name      : star<sor<unreserved, pct_encoded, sub_delims>> {};
+/////////////////////////////////////////////////////////////////////////////
+
+// So: reg-name is where I stray from the (very loose) grammar of
+// RFC-3986 and apply the stricter rules of RFC-1123 plus UTF-8.
+
+struct u_let_dig     : sor<ALPHA, DIGIT, UTF8_non_ascii> {};
+
+struct u_ldh_tail    : star<sor<seq<plus<one<'-'>>, u_let_dig>, u_let_dig>> {};
+
+struct u_label       : seq<u_let_dig, u_ldh_tail> {};
+
+//     in place of reg-dom, a DNS type hostname
+struct reg_name      : list_tail<u_label, one<'.'>> {};
+
+// All that is required for 3986 is the following:
+//       reg-name    = *( unreserved / pct-encoded / sub-delims )
+//struct reg_name    : star<sor<unreserved, pct_encoded, sub_delims>> {};
+
+/////////////////////////////////////////////////////////////////////////////
 
 //     dec-octet     = DIGIT                 ; 0-9
 //                   / %x31-39 DIGIT         ; 10-99
@@ -204,7 +222,7 @@ struct URI_eof       : seq<URI, eof> {};
 
 //     URI-reference = URI / relative-ref
 struct URI_reference : sor<URI, relative_ref> {};
-struct URI_reference_eof : sor<URI_reference, eof> {};
+struct URI_reference_eof : seq<URI_reference, eof> {};
 
 // clang-format on
 
@@ -296,63 +314,13 @@ template <> struct action<port> {
     parts.port = std::string_view(begin(in), size(in));
   }
 };
-} // namespace RFC3986
-
-// clang-format off
-namespace RFC7230 {
-
-using uri_host = RFC3986::host;
-
-//     obs-text = %x80-FF
-struct obs_text : range<'\x80', '\xFF'> {};
-
-//     qdtext = HTAB / SP / "!" / %x23-5B ; '#'-'['
-//            / %x5D-7E ; ']'-'~'
-//            / obs-text
-struct qdtext : sor<abnf::HTAB, abnf::SP, one<'!'>, range<'#', '['>,
-                    range<']', '~'>,
-                    obs_text> {};
-
-//     quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
-struct quoted_pair : seq<one<'\\'>, sor<abnf::HTAB, abnf::SP, abnf::VCHAR, obs_text>> {};
-
-//     quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
-struct quoted_string : seq<abnf::DQUOTE, star<sor<qdtext, quoted_pair>>, abnf::DQUOTE> {};
-
-//     OWS = *( SP / HTAB )
-struct OWS : star<sor<abnf::SP, abnf::HTAB>> {};
-
-using BWS = OWS;
-
-//   tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
-//    "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
-struct tchar : sor<one<'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'>,
-                   abnf::DIGIT,
-                   abnf::ALPHA> {};
-
-//     token = 1*tchar
-struct token : plus<tchar> {};
-
-//     transfer-parameter = token BWS "=" BWS ( token / quoted-string )
-struct transfer_parameter : seq<token, BWS, one<'='>, BWS, sor<token, quoted_string>> {};
-
-} // namespace RFC7230
-// clang-format on
+} // namespace parser
 
 namespace uri {
-DLL_PUBLIC bool parse(std::string_view uri, components& parts)
-{
-  // auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  // if (tao::pegtl::parse<RFC3986::any_URI_eof, RFC3986::action>(in, parts)) {
-  //   return true;
-  // }
-  return false;
-}
-
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (tao::pegtl::parse<RFC3986::URI_eof, RFC3986::action>(in, parts)) {
+  if (tao::pegtl::parse<parser::URI_eof, parser::action>(in, parts)) {
     return true;
   }
   return false;
@@ -361,8 +329,7 @@ DLL_PUBLIC bool parse_generic(std::string_view uri, components& parts)
 DLL_PUBLIC bool parse_relative_ref(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (tao::pegtl::parse<RFC3986::relative_ref_eof, RFC3986::action>(in,
-                                                                    parts)) {
+  if (tao::pegtl::parse<parser::relative_ref_eof, parser::action>(in, parts)) {
     return true;
   }
   return false;
@@ -371,8 +338,7 @@ DLL_PUBLIC bool parse_relative_ref(std::string_view uri, components& parts)
 DLL_PUBLIC bool parse_reference(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (tao::pegtl::parse<RFC3986::URI_reference_eof, RFC3986::action>(in,
-                                                                     parts)) {
+  if (tao::pegtl::parse<parser::URI_reference_eof, parser::action>(in, parts)) {
     return true;
   }
   return false;
@@ -381,8 +347,7 @@ DLL_PUBLIC bool parse_reference(std::string_view uri, components& parts)
 DLL_PUBLIC bool parse_absolute(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (tao::pegtl::parse<RFC3986::absolute_URI_eof, RFC3986::action>(in,
-                                                                    parts)) {
+  if (tao::pegtl::parse<parser::absolute_URI_eof, parser::action>(in, parts)) {
     return true;
   }
   return false;
@@ -429,17 +394,14 @@ syntax_error::syntax_error()
 
 syntax_error::~syntax_error() noexcept {}
 
-std::string to_string(uri::components const& uri)
+std::string to_string(components const& uri)
 {
   std::ostringstream os;
   os << uri;
   return os.str();
 }
 
-std::string to_string(uri::generic const& uri)
-{
-  return to_string(uri.parts());
-}
+std::string to_string(uri const& uri_in) { return to_string(uri_in.parts()); }
 
 } // namespace uri
 
@@ -458,7 +420,9 @@ DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
     os << "//" << uri.authority;
   }
 
-  os << uri.path;
+  if (!uri.path.empty()) {
+    os << uri.path;
+  }
 
   if (!uri.query.empty()) {
     os << '?' << uri.query;
@@ -471,7 +435,7 @@ DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
-DLL_PUBLIC std::ostream& operator<<(std::ostream& os, uri::generic const& uri)
+DLL_PUBLIC std::ostream& operator<<(std::ostream& os, uri::uri const& uri_in)
 {
-  return os << uri.parts();
+  return os << uri_in.parts();
 }
