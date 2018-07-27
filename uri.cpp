@@ -2,7 +2,6 @@
 #include "uri.hpp"
 
 #include <iostream>
-#include <regex>
 
 #include <glog/logging.h>
 
@@ -10,6 +9,8 @@
 
 #include <idn2.h>
 #include <uninorm.h>
+
+#include <boost/xpressive/xpressive.hpp>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -542,8 +543,8 @@ std::string remove_dot_segments(std::string input)
   std::string output;
   output.reserve(input.length());
 
-  auto constexpr path_segment_re_str = "^(/?[^/]*)";
-  auto const path_segment_re{std::regex{path_segment_re_str}};
+  // auto constexpr path_segment_re_str = "^(/?[^/]*)";
+  // auto const path_segment_re{std::regex{path_segment_re_str}};
 
   while (!input.empty()) {
     // A.
@@ -599,10 +600,17 @@ std::string remove_dot_segments(std::string input)
       input.erase(0, 2);
       continue;
     }
-    std::smatch sm;
-    if (std::regex_search(input, sm, path_segment_re)) {
-      output += sm.str();
-      input.erase(0, sm.str().length());
+
+    using namespace boost::xpressive;
+
+    mark_tag path_segment(1);
+    sregex path_segment_re
+        = bos >> (path_segment = (!as_xpr('/') >> *(~as_xpr('/'))));
+
+    smatch sm;
+    if (regex_search(input, sm, path_segment_re)) {
+      output += sm[path_segment];
+      input.erase(0, sm[path_segment].length());
     }
     else {
       LOG(FATAL) << "no match, we'll be looping forever";
