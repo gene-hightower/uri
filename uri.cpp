@@ -540,6 +540,7 @@ bool starts_with(std::string_view str, std::string_view prefix)
 std::string remove_dot_segments(std::string input)
 {
   std::string output;
+  output.reserve(input.length());
 
   auto constexpr path_segment_re_str = "^(/?[^/]*)";
   auto const path_segment_re{std::regex{path_segment_re_str}};
