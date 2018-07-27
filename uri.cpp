@@ -10,7 +10,7 @@
 #include <idn2.h>
 #include <uninorm.h>
 
-#include <boost/xpressive/xpressive.hpp>
+#include <boost/xpressive/xpressive_static.hpp>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp>
