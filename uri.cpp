@@ -549,60 +549,63 @@ std::string remove_dot_segments(std::string input)
     // A.
     if (starts_with(input, "../")) {
       input.erase(0, 3);
+      continue;
     }
-    else if (starts_with(input, "./")) {
+    if (starts_with(input, "./")) {
       input.erase(0, 2);
+      continue;
+    }
+
+    // B.
+    if (starts_with(input, "/./")) {
+      input.erase(0, 3);
+      input.insert(0, "/");
+      continue;
+    }
+    if (input == "/.") {
+      input.erase(0, 2);
+      input.insert(0, "/");
+      continue;
+    }
+
+    // C.
+    if (starts_with(input, "/../")) {
+      input.erase(0, 4);
+      input.insert(0, "/");
+      // remove last segment from output
+      auto last = output.rfind("/");
+      if (last != std::string::npos) {
+        output.erase(output.begin() + last, output.end());
+      }
+      continue;
+    }
+    if (input == "/..") {
+      input.erase(0, 3);
+      input.insert(0, "/");
+      // remove last segment from output
+      auto last = output.rfind("/");
+      if (last != std::string::npos) {
+        output.erase(output.begin() + last, output.end());
+      }
+      continue;
+    }
+
+    // D.
+    if (input == ".") {
+      input.erase(0, 1);
+      continue;
+    }
+    if (input == "..") {
+      input.erase(0, 2);
+      continue;
+    }
+    std::smatch sm;
+    if (std::regex_search(input, sm, path_segment_re)) {
+      output += sm.str();
+      input.erase(0, sm.str().length());
     }
     else {
-      // B.
-      if (starts_with(input, "/./")) {
-        input.erase(0, 3);
-        input.insert(0, "/");
-      }
-      else if (input == "/.") {
-        input.erase(0, 2);
-        input.insert(0, "/");
-      }
-      else {
-        // C.
-        if (starts_with(input, "/../")) {
-          input.erase(0, 4);
-          input.insert(0, "/");
-          // remove last segment from output
-          auto last = output.rfind("/");
-          if (last != std::string::npos) {
-            output.erase(output.begin() + last, output.end());
-          }
-        }
-        else if (input == "/..") {
-          input.erase(0, 3);
-          input.insert(0, "/");
-          // remove last segment from output
-          auto last = output.rfind("/");
-          if (last != std::string::npos) {
-            output.erase(output.begin() + last, output.end());
-          }
-        }
-        else {
-          // D.
-          if (input == ".") {
-            input.erase(0, 1);
-          }
-          else if (input == "..") {
-            input.erase(0, 2);
-          }
-          else {
-            std::smatch sm;
-            if (std::regex_search(input, sm, path_segment_re)) {
-              output += sm.str();
-              input.erase(0, sm.str().length());
-            }
-            else {
-              LOG(FATAL) << "no match, we'll be looping forever";
-            }
-          }
-        }
-      }
+      LOG(FATAL) << "no match, we'll be looping forever";
     }
   }
 
