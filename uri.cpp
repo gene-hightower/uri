@@ -2,6 +2,9 @@
 #include "uri.hpp"
 
 #include <iostream>
+#include <regex>
+
+#include <glog/logging.h>
 
 #include <fmt/format.h>
 
@@ -157,13 +160,13 @@ struct path_abempty  : star<seq<one<'/'>, segment>> {};
 
 /////////////////////////////////////////////////////////////////////////////
 
-// So: reg-name is where I stray from the (very loose) grammar of
-// RFC-3986 and apply the stricter rules of RFC-1123 plus the UTF-8 of
-// RFC-3987.
+// The definition of reg-name is where I stray from the (very loose)
+// grammar of RFC-3986 and apply the stricter rules of RFC-1123 plus
+// the UTF-8 of RFC-3987.
 
 // We allow very a very limited set of percent encoded characters in
-// the reg_name part: just letter, digit, hyphen, or dot.  If you want
-// Unicode in your host part, use UTF-8 or punycode.  You can't
+// the reg_name part: just letter, digit, hyphen, and dot.  If you
+// want Unicode in your host part, use UTF-8 or punycode.  You can't
 // percent encode it.
 
 struct pct_let_dig   : seq<one<'%'>,
@@ -522,63 +525,87 @@ std::string remove_pct_encoded_unreserved(std::string_view string)
   return fmt::to_string(out);
 }
 
-template <class Rng, class Pred>
-inline void remove_erase_if(Rng& rng, Pred&& pred)
+bool starts_with(std::string_view str, std::string_view prefix)
 {
-  auto first = std::begin(rng);
-  auto last = std::end(rng);
-  auto it = std::remove_if(first, last, pred);
-  rng.erase(it, last);
+  if (str.size() >= prefix.size())
+    if (str.compare(0, prefix.size(), prefix) == 0)
+      return true;
+  return false;
 }
 
-std::string normalize_path_segments(std::string_view path)
+// <https://tools.ietf.org/html/rfc3986#section-5.2.4>
+
+// 5.2.4.  Remove Dot Segments
+
+std::string remove_dot_segments(std::string input)
 {
-  std::string result;
+  std::string output;
 
-  if (!path.empty()) {
-    std::vector<std::string> path_segments;
+  auto constexpr path_segment_re_str = "^(/?[^/]*)";
+  auto const path_segment_re{std::regex{path_segment_re_str}};
 
-    boost::split(path_segments, path, [](char ch) { return ch == '/'; });
-
-    // Remove single dot segments.
-    remove_erase_if(path_segments,
-                    [](const std::string& s) { return (s == "."); });
-
-    // Remove double dot segments.
-    std::vector<std::string> normalized_segments;
-    for (auto const& segment : path_segments) {
-      if (segment == "..") {
-        if (normalized_segments.size() <= 1) {
-          throw std::runtime_error("malformed path");
-        }
-        normalized_segments.pop_back();
+  while (!input.empty()) {
+    // A.
+    if (starts_with(input, "../")) {
+      input.erase(0, 3);
+    }
+    else if (starts_with(input, "./")) {
+      input.erase(0, 2);
+    }
+    else {
+      // B.
+      if (starts_with(input, "/./")) {
+        input.erase(0, 3);
+        input.insert(0, "/");
+      }
+      else if (input == "/.") {
+        input.erase(0, 2);
+        input.insert(0, "/");
       }
       else {
-        normalized_segments.push_back(segment);
+        // C.
+        if (starts_with(input, "/../")) {
+          input.erase(0, 4);
+          input.insert(0, "/");
+          // remove last segment from output
+          auto last = output.rfind("/");
+          if (last != std::string::npos) {
+            output.erase(output.begin() + last, output.end());
+          }
+        }
+        else if (input == "/..") {
+          input.erase(0, 3);
+          input.insert(0, "/");
+          // remove last segment from output
+          auto last = output.rfind("/");
+          if (last != std::string::npos) {
+            output.erase(output.begin() + last, output.end());
+          }
+        }
+        else {
+          // D.
+          if (input == ".") {
+            input.erase(0, 1);
+          }
+          else if (input == "..") {
+            input.erase(0, 2);
+          }
+          else {
+            std::smatch sm;
+            if (std::regex_search(input, sm, path_segment_re)) {
+              output += sm.str();
+              input.erase(0, sm.str().length());
+            }
+            else {
+              LOG(FATAL) << "no match, we'll be looping forever";
+            }
+          }
+        }
       }
     }
-
-    // Remove adjacent slashes.
-    std::optional<std::string> prev_segment;
-
-    remove_erase_if(
-        normalized_segments, [&prev_segment](std::string const& segment) {
-          bool has_adjacent_slash
-              = ((prev_segment && prev_segment->empty()) && segment.empty());
-          if (!has_adjacent_slash) {
-            prev_segment = segment;
-          }
-          return has_adjacent_slash;
-        });
-
-    result = boost::join(normalized_segments, "/");
   }
 
-  if (result.empty()) {
-    result = "/";
-  }
-
-  return result;
+  return output;
 }
 
 size_t constexpr max_length = 255;
@@ -677,26 +704,26 @@ DLL_PUBLIC std::string normalize(components uri)
     uri.host = host;
   }
 
+  // we'll want to remove default port numbers
+
   // Rebuild authority from user@host:port triple.
   std::stringstream auth;
-  if (!uri.userinfo.empty()) {
+  if (!uri.userinfo.empty())
     auth << uri.userinfo << '@';
-  }
-  if (!uri.host.empty()) {
+
+  if (!uri.host.empty())
     auth << uri.host;
-  }
-  if (!uri.port.empty()) {
+
+  if (!uri.port.empty())
     auth << ':' << uri.port;
-  }
+
   auto auth_str = auth.str();
 
-  if (!auth_str.empty()) {
+  if (!auth_str.empty())
     uri.authority = auth_str;
-  }
 
   // Normalize the path.
-  auto path = remove_pct_encoded_unreserved(uri.path);
-  path = normalize_path_segments(path);
+  auto path = remove_dot_segments(remove_pct_encoded_unreserved(uri.path));
   uri.path = path;
 
   return to_string(uri);
