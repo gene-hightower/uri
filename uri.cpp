@@ -734,7 +734,7 @@ DLL_PUBLIC std::string normalize(components uri)
 }
 } // namespace uri
 
-// https://tools.ietf.org/html/rfc3986#section-5.3
+// <https://tools.ietf.org/html/rfc3986#section-5.3>
 
 // 5.3.  Component Recomposition
 
