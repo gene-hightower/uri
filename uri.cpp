@@ -508,8 +508,8 @@ std::string normalize_pct_encoded(std::string_view string)
   for (auto s = begin(string); s < end(string); ++s) {
     auto ch = *s;
     if (ch == '%') {
-      if ((s + 3 < end(string)) && ishexdigit(s[1]) && ishexdigit(s[2])) {
-        auto pct_ch = (hexdigit2bin(s[1]) << 4) + hexdigit2bin(s[2]);
+      if ((s + 3 <= end(string)) && ishexdigit(s[1]) && ishexdigit(s[2])) {
+        auto pct_ch = 0x10 * hexdigit2bin(s[1]) + hexdigit2bin(s[2]);
         if (isunreserved(pct_ch)) {
           fmt::format_to(out, "{}", char(pct_ch));
         }
