@@ -129,6 +129,8 @@ int main(int argc, char* argv[])
       "urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
       "https://🍔.digilicious.com/",
       "https://xn--ui8h.digilicious.com/",
+      "https://xn--ui8h%2Edigilicious%2Ecom/",
+      "https://xn%2D%2Dui8h%2Edigilicious%2Ecom/",
   };
 
   for (auto uri : good_uris) {
@@ -235,6 +237,8 @@ int main(int argc, char* argv[])
     std::cout << "re authority == " << parts.authority << '\n';
     std::cout << "re query     == " << parts.query << '\n';
     std::cout << "re fragment  == " << parts.fragment << '\n';
+
+    std::cout << "normal form  == " << uri::normalize(u.parts()) << '\n';
   }
 
   return failures;

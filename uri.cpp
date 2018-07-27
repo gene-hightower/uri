@@ -3,12 +3,63 @@
 
 #include <iostream>
 
+#include <fmt/format.h>
+
+#include <idn2.h>
+#include <uninorm.h>
+
+#include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/split.hpp>
+
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/abnf.hpp>
 // #include <tao/pegtl/contrib/tracer.hpp>
 
 using namespace tao::pegtl;
 using namespace tao::pegtl::abnf;
+
+namespace uri {
+class category_impl : public std::error_category {
+public:
+  category_impl() = default;
+  virtual ~category_impl() {}
+  virtual char const* name() const noexcept;
+  virtual std::string message(int ev) const;
+};
+
+char const* category_impl::name() const noexcept
+{
+  static const char name[] = "uri_error";
+  return name;
+}
+
+std::string category_impl::message(int ev) const
+{
+  switch (static_cast<error>(ev)) {
+  case error::invalid_syntax:
+    return "unable to parse URI";
+  }
+  return "unknown URI error";
+}
+
+const std::error_category& category()
+{
+  static category_impl category;
+  return category;
+}
+
+std::error_code make_error_code(error e)
+{
+  return std::error_code(static_cast<int>(e), category());
+}
+
+syntax_error::syntax_error()
+  : std::system_error(make_error_code(error::invalid_syntax))
+{
+}
+
+syntax_error::~syntax_error() noexcept {}
+} // namespace uri
 
 // clang-format off
 namespace parser {
@@ -17,14 +68,6 @@ namespace parser {
 
 // The order is the rules is mostly reversed here, since we need to
 // define them before use.
-
-//     sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
-//                   / "*" / "+" / "," / ";" / "="
-struct sub_delims    : one<'!', '$', '&', '\'', '(', ')',
-                           '*', '+', ',', ';', '='> {};
-
-//     gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
-struct gen_delims    : one<':', '/', '?', '#', '[', ']', '@'> {};
 
 // UTF-8
 
@@ -44,6 +87,14 @@ struct UTF8_4        : sor<seq<one<'\xF0'>, range<'\x90', '\xBF'>, rep<2, UTF8_t
                            seq<one<'\xF4'>, range<'\x80', '\x8F'>, rep<2, UTF8_tail>>> {};
 
 struct UTF8_non_ascii : sor<UTF8_2, UTF8_3, UTF8_4> {};
+
+//     sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+//                   / "*" / "+" / "," / ";" / "="
+struct sub_delims    : one<'!', '$', '&', '\'', '(', ')',
+                           '*', '+', ',', ';', '='> {};
+
+//     gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+struct gen_delims    : one<':', '/', '?', '#', '[', ']', '@'> {};
 
 //     reserved      = gen-delims / sub-delims
 struct reserved      : sor<gen_delims, sub_delims> {};
@@ -107,16 +158,39 @@ struct path_abempty  : star<seq<one<'/'>, segment>> {};
 /////////////////////////////////////////////////////////////////////////////
 
 // So: reg-name is where I stray from the (very loose) grammar of
-// RFC-3986 and apply the stricter rules of RFC-1123 plus UTF-8.
+// RFC-3986 and apply the stricter rules of RFC-1123 plus the UTF-8 of
+// RFC-3987.
 
-struct u_let_dig     : sor<ALPHA, DIGIT, UTF8_non_ascii> {};
+// We allow very a very limited set of percent encoded characters in
+// the reg_name part: just letter, digit, hyphen, or dot.  If you want
+// Unicode in your host part, use UTF-8 or punycode.  You can't
+// percent encode it.
 
-struct u_ldh_tail    : star<sor<seq<plus<one<'-'>>, u_let_dig>, u_let_dig>> {};
+struct pct_let_dig   : seq<one<'%'>,
+                           sor<// ALPHA    x41 -> x5A
+                               seq<one<'4'>, range<'1','9'>>,
+                               seq<one<'4'>, range<'A','F'>>,
+                               seq<one<'4'>, range<'a','f'>>,
+                               seq<one<'5'>, range<'0','9'>>,
+                               seq<one<'5'>, one<'A'>>,
+                               seq<one<'5'>, one<'a'>>,
+                               // DIGIT    x30 -> x39
+                               seq<one<'3'>, range<'0','9'>>
+                             >
+                           > {};
+
+struct u_let_dig     : sor<ALPHA, DIGIT, UTF8_non_ascii, pct_let_dig> {};
+
+struct dash          : sor<one<'-'>, TAOCPP_PEGTL_ISTRING("%2D")> {};
+
+struct u_ldh_tail    : star<sor<seq<plus<dash>, u_let_dig>, u_let_dig>> {};
 
 struct u_label       : seq<u_let_dig, u_ldh_tail> {};
 
-//     in place of reg-dom, a DNS type hostname
-struct reg_name      : list_tail<u_label, one<'.'>> {};
+struct dot           : sor<one<'.'>, TAOCPP_PEGTL_ISTRING("%2E")> {};
+
+// An Internet (RFC-1123) style hostname:
+struct reg_name      : list_tail<u_label, dot> {};
 
 // All that is required for 3986 is the following:
 //       reg-name    = *( unreserved / pct-encoded / sub-delims )
@@ -137,6 +211,7 @@ struct dec_octet     : sor<seq<string<'2','5'>, range<'0','5'>>,
 
 //     IPv4address   = dec-octet "." dec-octet "." dec-octet "." dec-octet
 struct IPv4address   : seq<dec_octet, one<'.'>, dec_octet, one<'.'>, dec_octet, one<'.'>, dec_octet> {};
+struct IPv4address_eof : seq<IPv4address, eof> {};
 
 //     h16           = 1*4HEXDIG
 //                   ; 16 bits of address represented in hexadecimal
@@ -171,6 +246,7 @@ struct IPvFuture     : seq<one<'v'>, plus<HEXDIG>, one<'.'>, plus<sor<unreserved
 
 //     IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
 struct IP_literal    : seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
+struct IP_literal_eof : seq<IP_literal, eof> {};
 
 //     port          = *DIGIT
 struct port          : star<DIGIT> {};
@@ -353,46 +429,7 @@ DLL_PUBLIC bool parse_absolute(std::string_view uri, components& parts)
   return false;
 }
 
-class category_impl : public std::error_category {
-public:
-  category_impl() = default;
-  virtual ~category_impl() {}
-  virtual char const* name() const noexcept;
-  virtual std::string message(int ev) const;
-};
-
-char const* category_impl::name() const noexcept
-{
-  static const char name[] = "uri_error";
-  return name;
-}
-
-std::string category_impl::message(int ev) const
-{
-  switch (static_cast<error>(ev)) {
-  case error::invalid_syntax:
-    return "unable to parse URI";
-  }
-  return "unknown URI error";
-}
-
-const std::error_category& category()
-{
-  static category_impl category;
-  return category;
-}
-
-std::error_code make_error_code(error e)
-{
-  return std::error_code(static_cast<int>(e), category());
-}
-
-syntax_error::syntax_error()
-  : std::system_error(make_error_code(error::invalid_syntax))
-{
-}
-
-syntax_error::~syntax_error() noexcept {}
+std::string to_string(uri const& uri_in) { return to_string(uri_in.parts()); }
 
 std::string to_string(components const& uri)
 {
@@ -401,8 +438,269 @@ std::string to_string(components const& uri)
   return os.str();
 }
 
-std::string to_string(uri const& uri_in) { return to_string(uri_in.parts()); }
+namespace {
+// clang-format off
 
+bool constexpr isunreserved(unsigned char in)
+{
+  switch (in) {
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+    case 'a': case 'b': case 'c': case 'd': case 'e':
+    case 'f': case 'g': case 'h': case 'i': case 'j':
+    case 'k': case 'l': case 'm': case 'n': case 'o':
+    case 'p': case 'q': case 'r': case 's': case 't':
+    case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
+    case 'A': case 'B': case 'C': case 'D': case 'E':
+    case 'F': case 'G': case 'H': case 'I': case 'J':
+    case 'K': case 'L': case 'M': case 'N': case 'O':
+    case 'P': case 'Q': case 'R': case 'S': case 'T':
+    case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
+    case '-': case '.': case '_': case '~':
+      return true;
+    default:
+      break;
+  }
+  return false;
+}
+
+bool constexpr ishexdigit(unsigned char in)
+{
+  switch (in) {
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+    case 'a': case 'b': case 'c': case 'd': case 'e':
+    case 'f':
+    case 'A': case 'B': case 'C': case 'D': case 'E':
+    case 'F':
+      return true;
+    default:
+      break;
+  }
+  return false;
+}
+
+unsigned char constexpr hexdigit2bin(unsigned char in)
+{
+  switch (in) {
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+      return (in - '0');
+    case 'a': case 'b': case 'c': case 'd': case 'e':
+    case 'f':
+      return 10 + (in - 'a');
+    case 'A': case 'B': case 'C': case 'D': case 'E':
+    case 'F':
+      break;
+  }
+  return 10 + (in - 'A');
+}
+// clang-format on
+
+std::string remove_pct_encoded_unreserved(std::string_view string)
+{
+  fmt::memory_buffer out;
+
+  for (auto s = begin(string); s < end(string); ++s) {
+    auto ch = *s;
+    if (ch == '%') {
+      if ((s + 3 < end(string)) && ishexdigit(s[1]) && ishexdigit(s[2])) {
+        auto pct_ch = (hexdigit2bin(s[1]) << 4) + hexdigit2bin(s[2]);
+        if (isunreserved(pct_ch)) {
+          fmt::format_to(out, "{}", char(pct_ch));
+        }
+        else {
+          fmt::format_to(out, "%{:02X}", pct_ch);
+        }
+        s += 2;
+        continue;
+      }
+    }
+    fmt::format_to(out, "{}", ch);
+  }
+
+  return fmt::to_string(out);
+}
+
+template <class Rng, class Pred>
+inline void remove_erase_if(Rng& rng, Pred&& pred)
+{
+  auto first = std::begin(rng);
+  auto last = std::end(rng);
+  auto it = std::remove_if(first, last, pred);
+  rng.erase(it, last);
+}
+
+std::string normalize_path_segments(std::string_view path)
+{
+  std::string result;
+
+  if (!path.empty()) {
+    std::vector<std::string> path_segments;
+
+    boost::split(path_segments, path, [](char ch) { return ch == '/'; });
+
+    // Remove single dot segments.
+    remove_erase_if(path_segments,
+                    [](const std::string& s) { return (s == "."); });
+
+    // Remove double dot segments.
+    std::vector<std::string> normalized_segments;
+    for (auto const& segment : path_segments) {
+      if (segment == "..") {
+        if (normalized_segments.size() <= 1) {
+          throw std::runtime_error("malformed path");
+        }
+        normalized_segments.pop_back();
+      }
+      else {
+        normalized_segments.push_back(segment);
+      }
+    }
+
+    // Remove adjacent slashes.
+    std::optional<std::string> prev_segment;
+
+    remove_erase_if(
+        normalized_segments, [&prev_segment](std::string const& segment) {
+          bool has_adjacent_slash
+              = ((prev_segment && prev_segment->empty()) && segment.empty());
+          if (!has_adjacent_slash) {
+            prev_segment = segment;
+          }
+          return has_adjacent_slash;
+        });
+
+    result = boost::join(normalized_segments, "/");
+  }
+
+  if (result.empty()) {
+    result = "/";
+  }
+
+  return result;
+}
+
+size_t constexpr max_length = 255;
+
+std::string_view remove_trailing_dot(std::string_view a)
+{
+  if (a.length() && ('.' == a.back())) {
+    a.remove_suffix(1);
+  }
+  return a;
+}
+
+// Normalization Form KC (NFKC) Compatibility Decomposition, followed
+// by Canonical Composition, see <http://unicode.org/reports/tr15/>
+
+std::string nfkc(std::string_view str)
+{
+  size_t length = max_length;
+  char bfr[max_length];
+  if (str.length() > max_length) {
+    throw std::runtime_error("hostname too long");
+  }
+  auto udata = reinterpret_cast<uint8_t const*>(str.data());
+  auto ubfr = reinterpret_cast<uint8_t*>(bfr);
+  if (u8_normalize(UNINORM_NFKC, udata, str.size(), ubfr, &length) == nullptr) {
+    throw std::runtime_error("u8_normalize failure");
+  }
+  return std::string{bfr, length};
+}
+
+bool is_IPv4address(std::string_view x)
+{
+  auto in{memory_input<>{x.data(), x.size(), "maybe-IPv4address"}};
+  if (tao::pegtl::parse<parser::IPv4address_eof, parser::action>(in)) {
+    return true;
+  }
+  return false;
+}
+
+bool is_IP_literal(std::string_view x)
+{
+  auto in{memory_input<>{x.data(), x.size(), "maybe-IP_literal"}};
+  if (tao::pegtl::parse<parser::IP_literal_eof, parser::action>(in)) {
+    return true;
+  }
+  return false;
+}
+
+std::string normalize_host(std::string_view host)
+{
+  host = remove_trailing_dot(host);
+
+  auto norm_host = remove_pct_encoded_unreserved(host);
+
+  norm_host = nfkc(norm_host);
+
+  char* ptr = nullptr;
+  auto code = idn2_to_ascii_8z(norm_host.data(), &ptr, IDN2_TRANSITIONAL);
+  if (code != IDN2_OK) {
+    throw std::runtime_error(idn2_strerror(code));
+  }
+  norm_host = ptr;
+  idn2_free(ptr);
+
+  // At this point, we have a (normalized) ascii norm_host.  Continue
+  // on to get the UTF-8 version.
+
+#ifdef PREFER_UNICODE_HOSTNAME
+  ptr = nullptr;
+  code = idn2_to_unicode_8z8z(norm_host.c_str(), &ptr, IDN2_TRANSITIONAL);
+  if (code != IDN2_OK) {
+    throw std::runtime_error(idn2_strerror(code));
+  }
+  norm_host = ptr;
+  idn2_free(ptr);
+#endif
+
+  return norm_host;
+}
+} // namespace
+
+DLL_PUBLIC std::string normalize(components uri)
+{
+  std::string scheme;
+  std::string host;
+
+  // Normalize the scheme.
+  scheme.reserve(uri.scheme.length());
+  std::transform(begin(uri.scheme), end(uri.scheme), std::back_inserter(scheme),
+                 [](unsigned char c) { return std::tolower(c); });
+  uri.scheme = scheme;
+
+  // Normalize the host name.
+  if (!(is_IPv4address(uri.host) || is_IP_literal(uri.host))) {
+    host = normalize_host(uri.host);
+    uri.host = host;
+  }
+
+  // Rebuild authority from user@host:port triple.
+  std::stringstream auth;
+  if (!uri.userinfo.empty()) {
+    auth << uri.userinfo << '@';
+  }
+  if (!uri.host.empty()) {
+    auth << uri.host;
+  }
+  if (!uri.port.empty()) {
+    auth << ':' << uri.port;
+  }
+  auto auth_str = auth.str();
+
+  if (!auth_str.empty()) {
+    uri.authority = auth_str;
+  }
+
+  // Normalize the path.
+  auto path = remove_pct_encoded_unreserved(uri.path);
+  path = normalize_path_segments(path);
+  uri.path = path;
+
+  return to_string(uri);
+}
 } // namespace uri
 
 // https://tools.ietf.org/html/rfc3986#section-5.3

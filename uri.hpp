@@ -10,20 +10,6 @@
 
 namespace uri {
 
-inline bool iequal_char(char a, char b)
-{
-  return std::toupper(static_cast<unsigned char>(a))
-         == std::toupper(static_cast<unsigned char>(b));
-}
-
-inline bool iequal(std::string_view a, std::string_view b)
-{
-  if (size(a) == size(b)) {
-    return std::equal(begin(b), end(b), begin(a), iequal_char);
-  }
-  return false;
-}
-
 enum class error {
   // parser errors
   invalid_syntax = 1,
@@ -48,12 +34,14 @@ struct components {
   std::string_view fragment;
 };
 
-DLL_PUBLIC std::string to_string(components const&);
-
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& comp);
 DLL_PUBLIC bool parse_relative_ref(std::string_view uri, components& comp);
 DLL_PUBLIC bool parse_reference(std::string_view uri, components& comp);
 DLL_PUBLIC bool parse_absolute(std::string_view uri, components& comp);
+
+DLL_PUBLIC std::string to_string(components const&);
+
+DLL_PUBLIC std::string normalize(components);
 
 class uri {
 public:

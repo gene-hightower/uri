@@ -1,9 +1,12 @@
-USES := libglog
+USES := libglog libidn2
 
 LIBS := uri
 uri_STEMS := uri
 
 CXXFLAGS += -IPEGTL/include
+LDLIBS += \
+	-lfmt \
+	-lunistring
 
 TESTS := uri-test
 
