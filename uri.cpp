@@ -500,7 +500,7 @@ unsigned char constexpr hexdigit2bin(unsigned char in)
 }
 // clang-format on
 
-std::string remove_pct_encoded_unreserved(std::string_view string)
+std::string normalize_pct_encoded(std::string_view string)
 {
   fmt::memory_buffer out;
 
@@ -662,7 +662,7 @@ std::string normalize_host(std::string_view host)
 {
   host = remove_trailing_dot(host);
 
-  auto norm_host = remove_pct_encoded_unreserved(host);
+  auto norm_host = normalize_pct_encoded(host);
 
   norm_host = nfkc(norm_host);
 
@@ -727,7 +727,7 @@ DLL_PUBLIC std::string normalize(components uri)
     uri.authority = auth_str;
 
   // Normalize the path.
-  auto path = remove_dot_segments(remove_pct_encoded_unreserved(uri.path));
+  auto path = remove_dot_segments(normalize_pct_encoded(uri.path));
   uri.path = path;
 
   return to_string(uri);
