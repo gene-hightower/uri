@@ -6,11 +6,10 @@
 #include <glog/logging.h>
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <idn2.h>
 #include <uninorm.h>
-
-#include <boost/xpressive/xpressive_static.hpp>
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -248,9 +247,21 @@ struct IPv6address   : sor<seq<                                               re
 //     IPvFuture     = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
 struct IPvFuture     : seq<one<'v'>, plus<HEXDIG>, one<'.'>, plus<sor<unreserved, sub_delims, one<':'>>>> {};
 
-//     IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
-struct IP_literal    : seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
-struct IP_literal_eof : seq<IP_literal, eof> {};
+//       IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
+//struct IP_literal    : seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
+
+// RFC 6874 replaced the above rule with:
+
+//     ZoneID        = 1*( unreserved / pct-encoded )
+struct ZoneID        : plus<sor<unreserved, pct_encoded>> {};
+
+//     IPv6addrz     = IPv6address "%25" ZoneID
+struct IPv6addrz     : seq<IPv6address, one<'%'>, ZoneID> {};
+
+//     IP-literal    = "[" ( IPv6address / IPv6addrz / IPvFuture  ) "]"
+struct IP_literal    :  seq<one<'['>, sor<IPv6addrz, IPv6address, IPvFuture>, one<']'>> {};
+
+struct IP_literal_eof: seq<IP_literal, eof> {};
 
 //     port          = *DIGIT
 struct port          : star<DIGIT> {};
@@ -303,6 +314,8 @@ struct URI_eof       : seq<URI, eof> {};
 //     URI-reference = URI / relative-ref
 struct URI_reference : sor<URI, relative_ref> {};
 struct URI_reference_eof : seq<URI_reference, eof> {};
+
+struct path_segment : seq<opt<one<'/'>>, seq<star<not_at<one<'/'>>, not_at<eof>, any>>> {};
 
 // clang-format on
 
@@ -392,6 +405,14 @@ template <> struct action<port> {
   static void apply(Input const& in, uri::components& parts)
   {
     parts.port = std::string_view(begin(in), size(in));
+  }
+};
+
+template <> struct action<path_segment> {
+  template <typename Input>
+  static void apply(Input const& in, std::string& path_seg)
+  {
+    path_seg = in.string();
   }
 };
 } // namespace parser
@@ -601,16 +622,13 @@ std::string remove_dot_segments(std::string input)
       continue;
     }
 
-    using namespace boost::xpressive;
+    auto in{memory_input<>{input.data(), input.size(), "path-segment"}};
 
-    mark_tag path_segment(1);
-    sregex path_segment_re
-        = bos >> (path_segment = (!as_xpr('/') >> *(~as_xpr('/'))));
-
-    smatch sm;
-    if (regex_search(input, sm, path_segment_re)) {
-      output += sm[path_segment];
-      input.erase(0, sm[path_segment].length());
+    std::string path_seg;
+    if (tao::pegtl::parse<parser::path_segment, parser::action>(in, path_seg)) {
+      LOG(INFO) << "match \"" << path_seg << "\"";
+      output += path_seg;
+      input.erase(0, path_seg.length());
     }
     else {
       LOG(FATAL) << "no match, we'll be looping forever";
