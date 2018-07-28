@@ -65,7 +65,7 @@ syntax_error::~syntax_error() noexcept {}
 } // namespace uri
 
 // clang-format off
-namespace parser {
+namespace uri_internal {
 
 // Rules are from <https://tools.ietf.org/html/rfc3986#appendix-A>
 
@@ -424,13 +424,14 @@ template <> struct action<path_segment> {
     path_seg = in.string();
   }
 };
-} // namespace parser
+} // namespace uri_internal
 
 namespace uri {
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (tao::pegtl::parse<parser::URI_eof, parser::action>(in, parts)) {
+  if (tao::pegtl::parse<uri_internal::URI_eof, uri_internal::action>(in,
+                                                                     parts)) {
     return true;
   }
   return false;
@@ -439,7 +440,8 @@ DLL_PUBLIC bool parse_generic(std::string_view uri, components& parts)
 DLL_PUBLIC bool parse_relative_ref(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (tao::pegtl::parse<parser::relative_ref_eof, parser::action>(in, parts)) {
+  if (tao::pegtl::parse<uri_internal::relative_ref_eof, uri_internal::action>(
+          in, parts)) {
     return true;
   }
   return false;
@@ -448,7 +450,8 @@ DLL_PUBLIC bool parse_relative_ref(std::string_view uri, components& parts)
 DLL_PUBLIC bool parse_reference(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (tao::pegtl::parse<parser::URI_reference_eof, parser::action>(in, parts)) {
+  if (tao::pegtl::parse<uri_internal::URI_reference_eof, uri_internal::action>(
+          in, parts)) {
     return true;
   }
   return false;
@@ -457,7 +460,8 @@ DLL_PUBLIC bool parse_reference(std::string_view uri, components& parts)
 DLL_PUBLIC bool parse_absolute(std::string_view uri, components& parts)
 {
   auto in{memory_input<>{uri.data(), uri.size(), "uri"}};
-  if (tao::pegtl::parse<parser::absolute_URI_eof, parser::action>(in, parts)) {
+  if (tao::pegtl::parse<uri_internal::absolute_URI_eof, uri_internal::action>(
+          in, parts)) {
     return true;
   }
   return false;
@@ -634,7 +638,8 @@ std::string remove_dot_segments(std::string input)
     auto in{memory_input<>{input.data(), input.size(), "path-segment"}};
 
     std::string path_seg;
-    if (tao::pegtl::parse<parser::path_segment, parser::action>(in, path_seg)) {
+    if (tao::pegtl::parse<uri_internal::path_segment, uri_internal::action>(
+            in, path_seg)) {
       output += path_seg;
       input.erase(0, path_seg.length());
     }
@@ -677,7 +682,8 @@ std::string nfkc(std::string_view str)
 bool is_IPv4address(std::string_view x)
 {
   auto in{memory_input<>{x.data(), x.size(), "maybe-IPv4address"}};
-  if (tao::pegtl::parse<parser::IPv4address_eof, parser::action>(in)) {
+  if (tao::pegtl::parse<uri_internal::IPv4address_eof, uri_internal::action>(
+          in)) {
     return true;
   }
   return false;
@@ -686,7 +692,8 @@ bool is_IPv4address(std::string_view x)
 bool is_IP_literal(std::string_view x)
 {
   auto in{memory_input<>{x.data(), x.size(), "maybe-IP_literal"}};
-  if (tao::pegtl::parse<parser::IP_literal_eof, parser::action>(in)) {
+  if (tao::pegtl::parse<uri_internal::IP_literal_eof, uri_internal::action>(
+          in)) {
     return true;
   }
   return false;
