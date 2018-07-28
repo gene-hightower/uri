@@ -711,7 +711,7 @@ std::string normalize_host(std::string_view host)
   // At this point, we have a (normalized) ascii norm_host.  Continue
   // on to get the UTF-8 version.
 
-#ifdef PREFER_UNICODE_HOSTNAME
+  //#ifdef PREFER_UNICODE_HOSTNAME
   ptr = nullptr;
   code = idn2_to_unicode_8z8z(norm_host.c_str(), &ptr, IDN2_TRANSITIONAL);
   if (code != IDN2_OK) {
@@ -719,7 +719,7 @@ std::string normalize_host(std::string_view host)
   }
   norm_host = ptr;
   idn2_free(ptr);
-#endif
+  //#endif
 
   return norm_host;
 }
