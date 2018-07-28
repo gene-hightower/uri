@@ -72,7 +72,7 @@ namespace parser {
 // The order is the rules is mostly reversed here, since we need to
 // define them before use.
 
-// UTF-8
+// UTF-8 is from RFC-3987
 
 struct UTF8_tail     : range<'\x80', '\xBF'> {};
 
@@ -164,10 +164,10 @@ struct path_abempty  : star<seq<one<'/'>, segment>> {};
 // grammar of RFC-3986 and apply the stricter rules of RFC-1123 plus
 // the UTF-8 of RFC-3987.
 
-// We allow very a very limited set of percent encoded characters in
-// the reg_name part: just letter, digit, hyphen, and dot.  If you
-// want Unicode in your host part, use UTF-8 or punycode.  You can't
-// percent encode it.
+// We allow a very limited set of percent encoded characters in the
+// reg_name part: just letter, digit, hyphen, and dot.  If you want
+// Unicode in your host part, use UTF-8 or punycode: you can't percent
+// encode it.
 
 struct pct_let_dig   : seq<one<'%'>,
                            sor<// ALPHA    x41 -> x5A
@@ -216,6 +216,15 @@ struct dec_octet     : sor<seq<string<'2','5'>, range<'0','5'>>,
 struct IPv4address   : seq<dec_octet, one<'.'>, dec_octet, one<'.'>, dec_octet, one<'.'>, dec_octet> {};
 struct IPv4address_eof : seq<IPv4address, eof> {};
 
+// The definition of IPv4address above is notably more strict than the
+// format for SMTP (RFC 5321) which is:
+//
+// IPv4-address-literal  = Snum 3("."  Snum)
+// Snum           = 1*3DIGIT
+//                ; representing a decimal integer
+//                ; value in the range 0 through 255
+
+// Back to 3986:
 //     h16           = 1*4HEXDIG
 //                   ; 16 bits of address represented in hexadecimal
 struct h16           : rep_min_max<1, 4, HEXDIG> {};
