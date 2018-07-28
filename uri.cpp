@@ -256,8 +256,8 @@ struct IPv6address   : sor<seq<                                               re
 //     IPvFuture     = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
 struct IPvFuture     : seq<one<'v'>, plus<HEXDIG>, one<'.'>, plus<sor<unreserved, sub_delims, one<':'>>>> {};
 
-//       IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
-//struct IP_literal    : seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
+//       IP-literal  = "[" ( IPv6address / IPvFuture  ) "]"
+//struct IP_literal  : seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
 
 // RFC 6874 replaced the above rule with:
 
