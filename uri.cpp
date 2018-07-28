@@ -626,7 +626,6 @@ std::string remove_dot_segments(std::string input)
 
     std::string path_seg;
     if (tao::pegtl::parse<parser::path_segment, parser::action>(in, path_seg)) {
-      LOG(INFO) << "match \"" << path_seg << "\"";
       output += path_seg;
       input.erase(0, path_seg.length());
     }
