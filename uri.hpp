@@ -33,6 +33,15 @@ struct components {
   std::optional<std::string_view> path;
   std::optional<std::string_view> query;
   std::optional<std::string_view> fragment;
+
+  bool operator==(components const& rhs) const
+  {
+    return (scheme == rhs.scheme) && (authority == rhs.authority)
+           && (userinfo == rhs.userinfo) && (host == rhs.host)
+           && (port == rhs.port) && (path == rhs.path) && (query == rhs.query)
+           && (fragment == rhs.fragment);
+  }
+  bool operator!=(components const& rhs) const { return !(*this == rhs); }
 };
 
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& comp);

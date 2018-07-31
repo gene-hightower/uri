@@ -2,155 +2,246 @@
 
 #include <glog/logging.h>
 
-#include <regex>
+struct test_case {
+  char const* uri;
+  uri::components parts;
+};
 
-// From: <https://tools.ietf.org/html/rfc3986#appendix-B>
+// clang-format off
+test_case tests[] = {
+{"foo://dude@example.com:8042/over/there?name=ferret#nose",
+{"foo", "dude@example.com:8042", "dude", "example.com", "8042", "/over/there", "name=ferret", "nose", }, },
 
-// Appendix B.  Parsing a URI Reference with a Regular Expression
-//      12            3  4          5       6  7        8 9
-//     ^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?
-auto constexpr uri_re_str
-    = "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?";
+{"foo://example.com:8042/over/there?name=ferret#nose",
+{"foo", "example.com:8042", {}, "example.com", "8042", "/over/there", "name=ferret", "nose", }, },
 
-auto const uri_re{std::regex{uri_re_str}};
+{"ftp://cnn.example.com&story=breaking_news@10.0.0.1/top_story.htm",
+{"ftp", "cnn.example.com&story=breaking_news@10.0.0.1", "cnn.example.com&story=breaking_news", "10.0.0.1", {}, "/top_story.htm", {}, {}, }, },
 
-bool uri_parse_re(std::string_view uri, uri::components& parts)
-{
-  std::cmatch what;
+{"ftp://foo.bar/baz",
+{"ftp", "foo.bar", {}, "foo.bar", {}, "/baz", {}, {}, }, },
 
-  if (!std::regex_match(begin(uri), end(uri), what, uri_re))
-    return false;
+{"ftp://ftp.is.co.za/rfc/rfc1808.txt",
+{"ftp", "ftp.is.co.za", {}, "ftp.is.co.za", {}, "/rfc/rfc1808.txt", {}, {}, }, },
 
-  if (what.size() > 9 && what.length(9))
-    parts.fragment
-        = std::string_view(cbegin(uri) + what.position(9), what.length(9));
-  if (what.size() > 7 && what.length(7))
-    parts.query
-        = std::string_view(cbegin(uri) + what.position(7), what.length(7));
-  if (what.size() > 5)
-    parts.path
-        = std::string_view(cbegin(uri) + what.position(5), what.length(5));
-  if (what.size() > 4 && what.length(4))
-    parts.authority
-        = std::string_view(cbegin(uri) + what.position(4), what.length(4));
-  if (what.size() > 2 && what.length(2))
-    parts.scheme
-        = std::string_view(cbegin(uri) + what.position(2), what.length(2));
+{"http://-.~_!$&'()*+,;=:%40:80%2f::::::@example.com",
+{"http", "-.~_!$&'()*+,;=:%40:80%2f::::::@example.com", "-.~_!$&'()*+,;=:%40:80%2f::::::", "example.com", {}, "", {}, {}, }, },
 
-  return true;
-}
+{"http://1337.net",
+{"http", "1337.net", {}, "1337.net", {}, "", {}, {}, }, },
+
+{"http://142.42.1.1/",
+{"http", "142.42.1.1", {}, "142.42.1.1", {}, "/", {}, {}, }, },
+
+{"http://142.42.1.1:8080/",
+{"http", "142.42.1.1:8080", {}, "142.42.1.1", "8080", "/", {}, {}, }, },
+
+{"http://223.255.255.254",
+{"http", "223.255.255.254", {}, "223.255.255.254", {}, "", {}, {}, }, },
+
+{"http://a.b-c.de",
+{"http", "a.b-c.de", {}, "a.b-c.de", {}, "", {}, {}, }, },
+
+{"http://code.google.com/events/#&product=browser",
+{"http", "code.google.com", {}, "code.google.com", {}, "/events/", {}, "&product=browser", }, },
+
+{"http://example.com",
+{"http", "example.com", {}, "example.com", {}, "", {}, {}, }, },
+
+{"http://example.com/",
+{"http", "example.com", {}, "example.com", {}, "/", {}, {}, }, },
+
+{"http://example.com:",
+{"http", "example.com:", {}, "example.com", "", "", {}, {}, }, },
+
+{"http://example.com:/",
+{"http", "example.com:", {}, "example.com", "", "/", {}, {}, }, },
+
+{"http://example.com:80",
+{"http", "example.com:80", {}, "example.com", "80", "", {}, {}, }, },
+
+{"http://example.com:80/",
+{"http", "example.com:80", {}, "example.com", "80", "/", {}, {}, }, },
+
+{"http://foo.bar/?q=Test%20URL-encoded%20stuff",
+{"http", "foo.bar", {}, "foo.bar", {}, "/", "q=Test%20URL-encoded%20stuff", {}, }, },
+
+{"http://foo.com/(something)?after=parens",
+{"http", "foo.com", {}, "foo.com", {}, "/(something)", "after=parens", {}, }, },
+
+{"http://foo.com/blah_(wikipedia)#cite-1",
+{"http", "foo.com", {}, "foo.com", {}, "/blah_(wikipedia)", {}, "cite-1", }, },
+
+{"http://foo.com/blah_(wikipedia)_blah#cite-1",
+{"http", "foo.com", {}, "foo.com", {}, "/blah_(wikipedia)_blah", {}, "cite-1", }, },
+
+{"http://foo.com/blah_blah",
+{"http", "foo.com", {}, "foo.com", {}, "/blah_blah", {}, {}, }, },
+
+{"http://foo.com/blah_blah/",
+{"http", "foo.com", {}, "foo.com", {}, "/blah_blah/", {}, {}, }, },
+
+{"http://foo.com/blah_blah_(wikipedia)",
+{"http", "foo.com", {}, "foo.com", {}, "/blah_blah_(wikipedia)", {}, {}, }, },
+
+{"http://foo.com/blah_blah_(wikipedia)_(again)",
+{"http", "foo.com", {}, "foo.com", {}, "/blah_blah_(wikipedia)_(again)", {}, {}, }, },
+
+{"http://foo.com/unicode_(✪)_in_parens",
+{"http", "foo.com", {}, "foo.com", {}, "/unicode_(✪)_in_parens", {}, {}, }, },
+
+{"http://j.mp",
+{"http", "j.mp", {}, "j.mp", {}, "", {}, {}, }, },
+
+{"http://userid:password@example.com",
+{"http", "userid:password@example.com", "userid:password", "example.com", {}, "", {}, {}, }, },
+
+{"http://userid:password@example.com/",
+{"http", "userid:password@example.com", "userid:password", "example.com", {}, "/", {}, {}, }, },
+
+{"http://userid:password@example.com:8080",
+{"http", "userid:password@example.com:8080", "userid:password", "example.com", "8080", "", {}, {}, }, },
+
+{"http://userid:password@example.com:8080/",
+{"http", "userid:password@example.com:8080", "userid:password", "example.com", "8080", "/", {}, {}, }, },
+
+{"http://userid@example.com",
+{"http", "userid@example.com", "userid", "example.com", {}, "", {}, {}, }, },
+
+{"http://userid@example.com/",
+{"http", "userid@example.com", "userid", "example.com", {}, "/", {}, {}, }, },
+
+{"http://userid@example.com:8080",
+{"http", "userid@example.com:8080", "userid", "example.com", "8080", "", {}, {}, }, },
+
+{"http://userid@example.com:8080/",
+{"http", "userid@example.com:8080", "userid", "example.com", "8080", "/", {}, {}, }, },
+
+{"http://www.example.com/wpstyle/?p=364",
+{"http", "www.example.com", {}, "www.example.com", {}, "/wpstyle/", "p=364", {}, }, },
+
+{"http://www.ics.uci.edu/pub/ietf/uri/#Related",
+{"http", "www.ics.uci.edu", {}, "www.ics.uci.edu", {}, "/pub/ietf/uri/", {}, "Related", }, },
+
+{"http://www.ietf.org/rfc/rfc2396.txt",
+{"http", "www.ietf.org", {}, "www.ietf.org", {}, "/rfc/rfc2396.txt", {}, {}, }, },
+
+{"http://مثال.إختبار",
+{"http", "مثال.إختبار", {}, "مثال.إختبار", {}, "", {}, {}, }, },
+
+{"http://उदाहरण.परीक्षा",
+{"http", "उदाहरण.परीक्षा", {}, "उदाहरण.परीक्षा", {}, "", {}, {}, }, },
+
+{"http://⌘.ws",
+{"http", "⌘.ws", {}, "⌘.ws", {}, "", {}, {}, }, },
+
+{"http://⌘.ws/",
+{"http", "⌘.ws", {}, "⌘.ws", {}, "/", {}, {}, }, },
+
+{"http://☺.damowmow.com/",
+{"http", "☺.damowmow.com", {}, "☺.damowmow.com", {}, "/", {}, {}, }, },
+
+{"http://✪df.ws/123",
+{"http", "✪df.ws", {}, "✪df.ws", {}, "/123", {}, {}, }, },
+
+{"http://➡.ws/䨹",
+{"http", "➡.ws", {}, "➡.ws", {}, "/䨹", {}, {}, }, },
+
+{"http://例子.测试",
+{"http", "例子.测试", {}, "例子.测试", {}, "", {}, {}, }, },
+
+{"https://tools.ietf.org/html/rfc3986#appendix-B",
+{"https", "tools.ietf.org", {}, "tools.ietf.org", {}, "/html/rfc3986", {}, "appendix-B", }, },
+
+{"https://www.example.com/foo/?bar=baz&inga=42&quux",
+{"https", "www.example.com", {}, "www.example.com", {}, "/foo/", "bar=baz&inga=42&quux", {}, }, },
+
+{"https://xn%2D%2Dui8h%2Edigilicious%2Ecom/",
+{"https", "xn%2D%2Dui8h%2Edigilicious%2Ecom", {}, "xn%2D%2Dui8h%2Edigilicious%2Ecom", {}, "/", {}, {}, }, },
+
+{"https://xn--ui8h%2Edigilicious%2Ecom/",
+{"https", "xn--ui8h%2Edigilicious%2Ecom", {}, "xn--ui8h%2Edigilicious%2Ecom", {}, "/", {}, {}, }, },
+
+{"https://xn--ui8h.digilicious.com/",
+{"https", "xn--ui8h.digilicious.com", {}, "xn--ui8h.digilicious.com", {}, "/", {}, {}, }, },
+
+{"https://🍔.digilicious.com/",
+{"https", "🍔.digilicious.com", {}, "🍔.digilicious.com", {}, "/", {}, {}, }, },
+
+{"ldap://[2001:db8::7]/c=GB?objectClass?one",
+{"ldap", "[2001:db8::7]", {}, "[2001:db8::7]", {}, "/c=GB", "objectClass?one", {}, }, },
+
+{"mailto:John.Doe@example.com",
+{"mailto", {}, {}, {}, {}, "John.Doe@example.com", {}, {}, }, },
+
+{"news:comp.infosystems.www.servers.unix",
+{"news", {}, {}, {}, {}, "comp.infosystems.www.servers.unix", {}, {}, }, },
+
+{"tel:+1-816-555-1212",
+{"tel", {}, {}, {}, {}, "+1-816-555-1212", {}, {}, }, },
+
+{"telnet://192.0.2.16:80/",
+{"telnet", "192.0.2.16:80", {}, "192.0.2.16", "80", "/", {}, {}, }, },
+
+{"urn:example:animal:ferret:nose",
+{"urn", {}, {}, {}, {}, "example:animal:ferret:nose", {}, {}, }, },
+
+{"urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
+{"urn", {}, {}, {}, {}, "oasis:names:specification:docbook:dtd:xml:4.1.2", {}, {}, }, },
+};
+// clang-format on
 
 int main(int argc, char* argv[])
 {
-  using std::string_view;
+  auto failures = 0;
 
-  // First, verify that uri_re works like the RFC says it should.
+  for (auto&& test : tests) {
+    uri::uri u{test.uri};
+    if (test.parts != u.parts()) {
+      std::cerr << test.uri << " failed to check\n";
 
-  // From RFC 3986, page 51
+      std::cout << "URL:\n";
+      if (u.scheme())
+        std::cout << "scheme()     == " << *u.scheme() << '\n';
+      if (u.authority())
+        std::cout << "authority()  == " << *u.authority() << '\n';
+      if (u.userinfo())
+        std::cout << "userinfo()   == " << *u.userinfo() << '\n';
+      if (u.host())
+        std::cout << "host()       == " << *u.host() << '\n';
+      if (u.port())
+        std::cout << "port()       == " << *u.port() << '\n';
+      if (u.path())
+        std::cout << "path()       == " << *u.path() << '\n';
+      if (u.query())
+        std::cout << "query()      == " << *u.query() << '\n';
+      if (u.fragment())
+        std::cout << "fragment()   == " << *u.fragment() << '\n';
 
-  auto u = "http://www.ics.uci.edu/pub/ietf/uri/#Related";
+      std::cout << "\ntest:\n";
 
-  std::cmatch m;
-  CHECK(std::regex_match(u, m, uri_re));
+      if (test.parts.scheme)
+        std::cout << "scheme     == " << *test.parts.scheme << '\n';
+      if (test.parts.authority)
+        std::cout << "authority  == " << *test.parts.authority << '\n';
+      if (test.parts.userinfo)
+        std::cout << "userinfo   == " << *test.parts.userinfo << '\n';
+      if (test.parts.host)
+        std::cout << "host       == " << *test.parts.host << '\n';
+      if (test.parts.port)
+        std::cout << "port       == " << *test.parts.port << '\n';
+      if (test.parts.path)
+        std::cout << "path       == " << *test.parts.path << '\n';
+      if (test.parts.query)
+        std::cout << "query      == " << *test.parts.query << '\n';
+      if (test.parts.fragment)
+        std::cout << "fragment   == " << *test.parts.fragment << '\n';
 
-  CHECK_EQ(m.size(), 10);
-  CHECK_EQ(string_view(u + m.position(0), m.length(0)), u);
-  CHECK_EQ(string_view(u + m.position(1), m.length(1)), "http:");
-  CHECK_EQ(string_view(u + m.position(2), m.length(2)), "http");
-  CHECK_EQ(string_view(u + m.position(3), m.length(3)), "//www.ics.uci.edu");
-  CHECK_EQ(string_view(u + m.position(4), m.length(4)), "www.ics.uci.edu");
-  CHECK_EQ(string_view(u + m.position(5), m.length(5)), "/pub/ietf/uri/");
-  CHECK_EQ(string_view(u + m.position(6), m.length(6)), "");
-  CHECK_EQ(string_view(u + m.position(7), m.length(7)), "");
-  CHECK_EQ(string_view(u + m.position(8), m.length(8)), "#Related");
-  CHECK_EQ(string_view(u + m.position(9), m.length(9)), "Related");
+      std::cout << "\n";
 
-  // Next, compare our parser's results vs. the regular expression for
-  // a bunch of URIs.
-
-  char const* good_uris[]{
-      "http://www.ics.uci.edu/pub/ietf/uri/#Related",
-      "http://-.~_!$&'()*+,;=:%40:80%2f::::::@example.com",
-      "ftp://cnn.example.com&story=breaking_news@10.0.0.1/top_story.htm",
-      "http://www.ics.uci.edu/pub/ietf/uri/#Related",
-      "https://tools.ietf.org/html/rfc3986#appendix-B",
-      "http://example.com",
-      "http://example.com/",
-      "http://example.com:/",
-      "http://example.com:80/",
-      "http://example.com:80",
-      "http://example.com:",
-      "foo://example.com:8042/over/there?name=ferret#nose",
-      "foo://dude@example.com:8042/over/there?name=ferret#nose",
-      "urn:example:animal:ferret:nose",
-      "http://foo.com/blah_blah",
-      "http://foo.com/blah_blah/",
-      "http://foo.com/blah_blah_(wikipedia)",
-      "http://foo.com/blah_blah_(wikipedia)_(again)",
-      "http://www.example.com/wpstyle/?p=364",
-      "https://www.example.com/foo/?bar=baz&inga=42&quux",
-      "http://✪df.ws/123",
-      "http://userid:password@example.com:8080",
-      "http://userid:password@example.com:8080/",
-      "http://userid@example.com",
-      "http://userid@example.com/",
-      "http://userid@example.com:8080",
-      "http://userid@example.com:8080/",
-      "http://userid:password@example.com",
-      "http://userid:password@example.com/",
-      "http://142.42.1.1/",
-      "http://142.42.1.1:8080/",
-      "http://➡.ws/䨹",
-      "http://⌘.ws",
-      "http://⌘.ws/",
-      "http://foo.com/blah_(wikipedia)#cite-1",
-      "http://foo.com/blah_(wikipedia)_blah#cite-1",
-      "http://foo.com/unicode_(✪)_in_parens",
-      "http://foo.com/(something)?after=parens",
-      "http://☺.damowmow.com/",
-      "http://code.google.com/events/#&product=browser",
-      "http://j.mp",
-      "ftp://foo.bar/baz",
-      "http://foo.bar/?q=Test%20URL-encoded%20stuff",
-      "http://مثال.إختبار",
-      "http://例子.测试",
-      "http://उदाहरण.परीक्षा",
-      "http://-.~_!$&'()*+,;=:%40:80%2f::::::@example.com",
-      "http://1337.net",
-      "http://a.b-c.de",
-      "http://223.255.255.254",
-      "ftp://ftp.is.co.za/rfc/rfc1808.txt",
-      "http://www.ietf.org/rfc/rfc2396.txt",
-      "ldap://[2001:db8::7]/c=GB?objectClass?one",
-      "mailto:John.Doe@example.com",
-      "news:comp.infosystems.www.servers.unix",
-      "tel:+1-816-555-1212",
-      "telnet://192.0.2.16:80/",
-      "urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
-      "https://🍔.digilicious.com/",
-      "https://xn--ui8h.digilicious.com/",
-      "https://xn--ui8h%2Edigilicious%2Ecom/",
-      "https://xn%2D%2Dui8h%2Edigilicious%2Ecom/",
-  };
-
-  for (auto uri : good_uris) {
-    uri::components parts;
-    CHECK(uri_parse_re(uri, parts));
-
-    uri::uri u{uri};
-
-    CHECK(parts.scheme == u.scheme());
-    CHECK(parts.authority == u.authority());
-    CHECK(parts.path == u.path());
-    if (parts.query && u.query()) {
-      CHECK(*parts.query == *u.query());
+      ++failures;
+      return 1;
     }
-    CHECK(parts.fragment == u.fragment());
-
-    // Make sure we can put it back together as a string and get the
-    // original URI.
-
-    CHECK(to_string(u) == uri);
   }
 
   // Verify a bunch of bad URIs all throw exceptions.
@@ -200,8 +291,6 @@ int main(int argc, char* argv[])
   //  "http://10.1.1.1",
   //  "http://10.1.1.254",
 
-  auto failures = 0;
-
   for (auto uri : bad_uris) {
     try {
       uri::uri u{uri};
@@ -238,19 +327,56 @@ int main(int argc, char* argv[])
     if (u.fragment())
       std::cout << "fragment()   == " << *u.fragment() << '\n';
 
-    uri::components parts;
-    CHECK(uri_parse_re(argv[i], parts));
-
-    if (parts.scheme)
-      std::cout << "re scheme    == " << *parts.scheme << '\n';
-    if (parts.authority)
-      std::cout << "re authority == " << *parts.authority << '\n';
-    if (parts.query)
-      std::cout << "re query     == " << *parts.query << '\n';
-    if (parts.fragment)
-      std::cout << "re fragment  == " << *parts.fragment << '\n';
+    std::cout << "\n";
 
     std::cout << "normal form  == " << uri::normalize(u.parts()) << '\n';
+
+    std::cout << "\n// test case:\n";
+
+    std::cout << "{\"" << u.string() << "\",\n{";
+
+    if (u.scheme())
+      std::cout << "\"" << *u.scheme() << "\", ";
+    else
+      std::cout << "{}, ";
+
+    if (u.authority())
+      std::cout << "\"" << *u.authority() << "\", ";
+    else
+      std::cout << "{}, ";
+
+    if (u.userinfo())
+      std::cout << "\"" << *u.userinfo() << "\", ";
+    else
+      std::cout << "{}, ";
+
+    if (u.host())
+      std::cout << "\"" << *u.host() << "\", ";
+    else
+      std::cout << "{}, ";
+
+    if (u.port())
+      std::cout << "\"" << *u.port() << "\", ";
+    else
+      std::cout << "{}, ";
+
+    if (u.path())
+      std::cout << "\"" << *u.path() << "\", ";
+    else
+      std::cout << "{}, ";
+
+    if (u.query())
+      std::cout << "\"" << *u.query() << "\", ";
+    else
+      std::cout << "{}, ";
+
+    if (u.fragment())
+      std::cout << "\"" << *u.fragment() << "\", ";
+    else
+      std::cout << "{}, ";
+
+    std::cout << "},\n";
+    std::cout << "},\n";
   }
 
   return failures;
