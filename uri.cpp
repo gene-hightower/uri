@@ -577,9 +577,6 @@ std::string remove_dot_segments(std::string input)
   std::string output;
   output.reserve(input.length());
 
-  // auto constexpr path_segment_re_str = "^(/?[^/]*)";
-  // auto const path_segment_re{std::regex{path_segment_re_str}};
-
   while (!input.empty()) {
     // A.
     if (starts_with(input, "../")) {
@@ -736,43 +733,136 @@ DLL_PUBLIC std::string normalize(components uri)
 {
   std::string scheme;
   std::string host;
+  std::string auth;
+  std::string path;
 
   // Normalize the scheme.
-  scheme.reserve(uri.scheme.length());
-  std::transform(begin(uri.scheme), end(uri.scheme), std::back_inserter(scheme),
-                 [](unsigned char c) { return std::tolower(c); });
-  uri.scheme = scheme;
+  if (uri.scheme) {
+    scheme.reserve(uri.scheme->length());
+    std::transform(begin(*uri.scheme), end(*uri.scheme),
+                   std::back_inserter(scheme),
+                   [](unsigned char c) { return std::tolower(c); });
+    uri.scheme = scheme;
+  }
 
   // Normalize the host name.
-  if (!(is_IPv4address(uri.host) || is_IP_literal(uri.host))) {
-    host = normalize_host(uri.host);
-    uri.host = host;
+  if (uri.host) {
+    if (!(is_IPv4address(*uri.host) || is_IP_literal(*uri.host))) {
+      host = normalize_host(*uri.host);
+      uri.host = host;
+    }
   }
 
   // we'll want to remove default port numbers
 
   // Rebuild authority from user@host:port triple.
-  std::stringstream auth;
-  if (!uri.userinfo.empty())
-    auth << uri.userinfo << '@';
+  std::stringstream authstream;
+  if (uri.userinfo)
+    authstream << *uri.userinfo << '@';
 
-  if (!uri.host.empty())
-    auth << uri.host;
+  if (uri.host)
+    authstream << *uri.host;
 
-  if (!uri.port.empty())
-    auth << ':' << uri.port;
+  if (uri.port)
+    authstream << ':' << *uri.port;
 
-  auto auth_str = auth.str();
-
-  if (!auth_str.empty())
-    uri.authority = auth_str;
+  if (uri.userinfo || uri.host || uri.port) {
+    auth = authstream.str();
+    uri.authority = auth;
+  }
 
   // Normalize the path.
-  auto path = remove_dot_segments(normalize_pct_encoded(uri.path));
-  uri.path = path;
+  if (uri.path) {
+    path = remove_dot_segments(normalize_pct_encoded(*uri.path));
+    uri.path = path;
+  }
 
   return to_string(uri);
 }
+
+DLL_PUBLIC uri resolve_ref(uri const& ref, uri const& base)
+{
+  // 5.2.  Relative Resolution
+
+  if (ref.empty()) {
+    return base;
+  }
+
+  components base_parts;
+  CHECK(parse_absolute(base.string(), base_parts))
+      << "A base URI must conform to the <absolute-URI> syntax rule (RFC 3986 "
+         "Section 4.3).";
+
+  components ref_parts;
+  CHECK(parse_reference(ref.string(), ref_parts))
+      << "The URI reference syntax does not conform to RFC 3986 Section 4.1.";
+
+  std::string p;
+
+  components target_parts;
+  if (ref_parts.scheme) {
+    target_parts.scheme = *ref_parts.scheme;
+    if (ref_parts.authority)
+      target_parts.authority = *ref_parts.authority;
+    if (ref_parts.path) {
+      p = std::string(ref_parts.path->data(), ref_parts.path->length());
+      p = remove_dot_segments(p);
+      target_parts.path = p;
+    }
+    if (ref_parts.query)
+      target_parts.query = *ref_parts.query;
+  }
+  else {
+    if (ref_parts.authority) {
+      target_parts.authority = *ref_parts.authority;
+      if (ref_parts.path) {
+        p = std::string(ref_parts.path->data(), ref_parts.path->length());
+        p = remove_dot_segments(p);
+        target_parts.path = p;
+      }
+      if (ref_parts.query) {
+        target_parts.query = *ref_parts.query;
+      }
+    }
+    else {
+
+      // ...hackage -- not finished...
+
+#if 0
+
+      if (ref_parts.path.empty()) {
+        target_parts.path = base_parts.path;
+        if (!ref_parts.query.empty()) {
+          target_parts.query = ref_parts.query;
+        }
+        else {
+          target_parts.query = base_parts.query;
+        }
+      }
+      else {
+        if (starts_with(ref_parts.path, "/")) {
+          p = remove_dot_segments(ref_parts.path);
+          target_parts.path = p;
+        }
+        else {
+          // 5.2.3.  Merge Paths
+          if ((!base_parts.authority.empty()) && base_parts.path.empty()) {
+            p = "/" + ref_parts.path;
+          }
+          else {
+            
+          }
+          p = remove_dot_segments(p);
+          target_parts.path = p;
+        }
+      }
+#endif
+    }
+  }
+
+  return uri(target_parts);
+}
+
 } // namespace uri
 
 // <https://tools.ietf.org/html/rfc3986#section-5.3>
@@ -782,24 +872,24 @@ DLL_PUBLIC std::string normalize(components uri)
 DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
                                     uri::components const& uri)
 {
-  if (!uri.scheme.empty()) {
-    os << uri.scheme << ':';
+  if (uri.scheme) {
+    os << *uri.scheme << ':';
   }
 
-  if (!uri.authority.empty()) {
-    os << "//" << uri.authority;
+  if (uri.authority) {
+    os << "//" << *uri.authority;
   }
 
-  if (!uri.path.empty()) {
-    os << uri.path;
+  if (uri.path) {
+    os << *uri.path;
   }
 
-  if (!uri.query.empty()) {
-    os << '?' << uri.query;
+  if (uri.query) {
+    os << '?' << *uri.query;
   }
 
-  if (!uri.fragment.empty()) {
-    os << '#' << uri.fragment;
+  if (uri.fragment) {
+    os << '#' << *uri.fragment;
   }
 
   return os;

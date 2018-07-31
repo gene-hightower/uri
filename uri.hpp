@@ -5,6 +5,7 @@
 
 #include <cctype>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -24,14 +25,14 @@ public:
 const std::error_category& category();
 
 struct components {
-  std::string_view scheme;
-  std::string_view authority; // further brokwn down into:
-  std::string_view userinfo;  //  from authority
-  std::string_view host;      //  from authority
-  std::string_view port;      //  from authority
-  std::string_view path;
-  std::string_view query;
-  std::string_view fragment;
+  std::optional<std::string_view> scheme;
+  std::optional<std::string_view> authority; // further brokwn down into:
+  std::optional<std::string_view> userinfo;  //  from authority
+  std::optional<std::string_view> host;      //  from authority
+  std::optional<std::string_view> port;      //  from authority
+  std::optional<std::string_view> path;
+  std::optional<std::string_view> query;
+  std::optional<std::string_view> fragment;
 };
 
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& comp);
@@ -72,6 +73,14 @@ public:
   // clang-format on
 
   components const& parts() const { return parts_; }
+
+  std::string_view string() const { return uri_; }
+
+  bool empty() const
+  {
+    return !(parts_.scheme || parts_.authority || parts_.userinfo || parts_.host
+             || parts_.port || parts_.path || parts_.query || parts_.fragment);
+  }
 
 private:
   std::string uri_;

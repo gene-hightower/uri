@@ -21,19 +21,19 @@ bool uri_parse_re(std::string_view uri, uri::components& parts)
   if (!std::regex_match(begin(uri), end(uri), what, uri_re))
     return false;
 
-  if (what.size() > 9)
+  if (what.size() > 9 && what.length(9))
     parts.fragment
         = std::string_view(cbegin(uri) + what.position(9), what.length(9));
-  if (what.size() > 7)
+  if (what.size() > 7 && what.length(7))
     parts.query
         = std::string_view(cbegin(uri) + what.position(7), what.length(7));
   if (what.size() > 5)
     parts.path
         = std::string_view(cbegin(uri) + what.position(5), what.length(5));
-  if (what.size() > 4)
+  if (what.size() > 4 && what.length(4))
     parts.authority
         = std::string_view(cbegin(uri) + what.position(4), what.length(4));
-  if (what.size() > 2)
+  if (what.size() > 2 && what.length(2))
     parts.scheme
         = std::string_view(cbegin(uri) + what.position(2), what.length(2));
 
@@ -139,18 +139,18 @@ int main(int argc, char* argv[])
 
     uri::uri u{uri};
 
-    CHECK_EQ(parts.scheme, u.scheme());
-
-    CHECK_EQ(parts.authority, u.authority());
-
-    CHECK_EQ(parts.path, u.path());
-    CHECK_EQ(parts.query, u.query());
-    CHECK_EQ(parts.fragment, u.fragment());
+    CHECK(parts.scheme == u.scheme());
+    CHECK(parts.authority == u.authority());
+    CHECK(parts.path == u.path());
+    if (parts.query && u.query()) {
+      CHECK(*parts.query == *u.query());
+    }
+    CHECK(parts.fragment == u.fragment());
 
     // Make sure we can put it back together as a string and get the
     // original URI.
 
-    CHECK_EQ(to_string(u), uri);
+    CHECK(to_string(u) == uri);
   }
 
   // Verify a bunch of bad URIs all throw exceptions.
@@ -221,22 +221,34 @@ int main(int argc, char* argv[])
   for (auto i = 1; i < argc; ++i) {
     uri::uri u{argv[i]};
 
-    std::cout << "scheme()     == " << u.scheme() << '\n';
-    std::cout << "authority()  == " << u.authority() << '\n';
-    std::cout << "userinfo()   == " << u.userinfo() << '\n';
-    std::cout << "host()       == " << u.host() << '\n';
-    std::cout << "port()       == " << u.port() << '\n';
-    std::cout << "path()       == " << u.path() << '\n';
-    std::cout << "query()      == " << u.query() << '\n';
-    std::cout << "fragment()   == " << u.fragment() << '\n';
+    if (u.scheme())
+      std::cout << "scheme()     == " << *u.scheme() << '\n';
+    if (u.authority())
+      std::cout << "authority()  == " << *u.authority() << '\n';
+    if (u.userinfo())
+      std::cout << "userinfo()   == " << *u.userinfo() << '\n';
+    if (u.host())
+      std::cout << "host()       == " << *u.host() << '\n';
+    if (u.port())
+      std::cout << "port()       == " << *u.port() << '\n';
+    if (u.path())
+      std::cout << "path()       == " << *u.path() << '\n';
+    if (u.query())
+      std::cout << "query()      == " << *u.query() << '\n';
+    if (u.fragment())
+      std::cout << "fragment()   == " << *u.fragment() << '\n';
 
     uri::components parts;
     CHECK(uri_parse_re(argv[i], parts));
 
-    std::cout << "re scheme    == " << parts.scheme << '\n';
-    std::cout << "re authority == " << parts.authority << '\n';
-    std::cout << "re query     == " << parts.query << '\n';
-    std::cout << "re fragment  == " << parts.fragment << '\n';
+    if (parts.scheme)
+      std::cout << "re scheme    == " << *parts.scheme << '\n';
+    if (parts.authority)
+      std::cout << "re authority == " << *parts.authority << '\n';
+    if (parts.query)
+      std::cout << "re query     == " << *parts.query << '\n';
+    if (parts.fragment)
+      std::cout << "re fragment  == " << *parts.fragment << '\n';
 
     std::cout << "normal form  == " << uri::normalize(u.parts()) << '\n';
   }
