@@ -800,15 +800,23 @@ DLL_PUBLIC uri resolve_ref(uri const& ref, uri const& base)
   std::string p;
 
   components target_parts;
+
+  // if defined(R.scheme) then
+
   if (ref_parts.scheme) {
+
+    // T.scheme    = R.scheme;
     target_parts.scheme = *ref_parts.scheme;
-    if (ref_parts.authority)
-      target_parts.authority = *ref_parts.authority;
+
+    // T.authority = R.authority;
+    target_parts.authority = ref_parts.authority;
+
     if (ref_parts.path) {
       p = std::string(ref_parts.path->data(), ref_parts.path->length());
       p = remove_dot_segments(p);
       target_parts.path = p;
     }
+
     if (ref_parts.query)
       target_parts.query = *ref_parts.query;
   }
@@ -820,19 +828,13 @@ DLL_PUBLIC uri resolve_ref(uri const& ref, uri const& base)
         p = remove_dot_segments(p);
         target_parts.path = p;
       }
-      if (ref_parts.query) {
-        target_parts.query = *ref_parts.query;
-      }
+      target_parts.query = ref_parts.query;
     }
     else {
 
-      // ...hackage -- not finished...
-
-#if 0
-
-      if (ref_parts.path.empty()) {
+      if (ref_parts.path == "") {
         target_parts.path = base_parts.path;
-        if (!ref_parts.query.empty()) {
+        if (ref_parts.query) {
           target_parts.query = ref_parts.query;
         }
         else {
@@ -840,25 +842,27 @@ DLL_PUBLIC uri resolve_ref(uri const& ref, uri const& base)
         }
       }
       else {
-        if (starts_with(ref_parts.path, "/")) {
-          p = remove_dot_segments(ref_parts.path);
-          target_parts.path = p;
+        if (starts_with(*ref_parts.path, "/")) {
+          if (ref_parts.path) {
+            p = std::string(ref_parts.path->data(), ref_parts.path->length());
+            p = remove_dot_segments(p);
+            target_parts.path = p;
+          }
         }
         else {
-          // 5.2.3.  Merge Paths
-          if ((!base_parts.authority.empty()) && base_parts.path.empty()) {
-            p = "/" + ref_parts.path;
-          }
-          else {
-            
-          }
-          p = remove_dot_segments(p);
-          target_parts.path = p;
+          // T.path = merge(Base.path, R.path);
+          // T.path = remove_dot_segments(T.path);
         }
+        // T.query = R.query;
       }
-#endif
+
+      // T.authority = Base.authority;
     }
+
+    // T.scheme = Base.scheme;
   }
+
+  // T.fragment = R.fragment;
 
   return uri(target_parts);
 }
@@ -876,7 +880,24 @@ DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
     os << *uri.scheme << ':';
   }
 
-  if (uri.authority) {
+  // I guess the more specific parts should take precedence over the
+  // more generic authority part.  Or maybe I should verify that they
+  // are equivalent.  Not sure.
+
+  if (uri.userinfo || uri.host || uri.port) {
+    os << "//";
+
+    if (uri.userinfo)
+      os << *uri.userinfo << '@';
+
+    // maybe host can never be undefined, and never zero length?
+    if (uri.host)
+      os << *uri.host;
+
+    if (uri.port)
+      os << ':' << *uri.userinfo;
+  }
+  else if (uri.authority) {
     os << "//" << *uri.authority;
   }
 
