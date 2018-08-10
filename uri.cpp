@@ -132,7 +132,8 @@ struct segment_nz    : plus<pchar> {};
 //     segment       = *pchar
 struct segment       : star<pchar> {};
 
-//     path-empty    = 0<pchar>
+// Updated by Errata ID: 2033
+//     path-empty    = ""
 struct path_empty    : success {};
 
 //     path-rootless = segment-nz *( "/" segment )
@@ -195,9 +196,10 @@ struct dot           : sor<one<'.'>, TAOCPP_PEGTL_ISTRING("%2E")> {};
 // An Internet (RFC-1123) style hostname:
 struct reg_name      : list_tail<u_label, dot> {};
 
-// All that is required for 3986 is the following:
-//       reg-name    = *( unreserved / pct-encoded / sub-delims )
-//struct reg_name    : star<sor<unreserved, pct_encoded, sub_delims>> {};
+// All that is required for 3986 (as updated by Errata ID: 4942) is the following:
+
+//       reg-name    = *( unreserved / pct-encoded / "-" / "." )
+//struct reg_name    : star<sor<unreserved, pct_encoded, one<'-'>, one<'.'>>> {};
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -290,13 +292,18 @@ struct authority     : seq<opt<userinfo_at>, host, opt<seq<one<':'>, port>>> {};
 //     scheme        = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
 struct scheme        : seq<ALPHA, star<sor<ALPHA, DIGIT, one<'+', '-', '.'>>>> {};
 
+// Use scheme_colon rule to trigger setting scheme field only after ':' char is found.
+struct scheme_colon  : seq<scheme, one<':'>> {};
+
 //     relative-part = "//" authority path-abempty
 //                   / path-absolute
 //                   / path-noscheme
+//                   / path-abempty    ; this was added in Errata ID: 5428
 //                   / path-empty
 struct relative_part : sor<seq<two<'/'>, authority, path_abempty>,
                            path_absolute,
                            path_noscheme,
+                           path_abempty,
                            path_empty> {};
 
 //     relative-ref  = relative-part [ "?" query ] [ "#" fragment ]
@@ -313,7 +320,7 @@ struct hier_part     : sor<seq<two<'/'>, authority, path_abempty>,
                            path_empty> {};
 
 //     absolute-URI  = scheme ":" hier-part [ "?" query ]
-struct absolute_URI  : seq<scheme, one<':'>, hier_part, opt<seq<one<'?'>, query>>> {};
+struct absolute_URI  : seq<scheme_colon, hier_part, opt<seq<one<'?'>, query>>> {};
 struct absolute_URI_eof : seq<absolute_URI, eof> {};
 
 //     URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
@@ -331,11 +338,14 @@ struct path_segment : seq<opt<one<'/'>>, seq<star<not_at<one<'/'>>, not_at<eof>,
 template <typename Rule> struct action : nothing<Rule> {
 };
 
-template <> struct action<scheme> {
+template <> struct action<scheme_colon> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.scheme = std::string_view(begin(in), size(in));
+    auto sc = in.string();
+    CHECK((size(sc) >= 1) && (sc.back() == ':'));
+    sc.pop_back();
+    parts.scheme = sc;
   }
 };
 
@@ -343,7 +353,7 @@ template <> struct action<authority> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.authority = std::string_view(begin(in), size(in));
+    parts.authority = in.string();
   }
 };
 
@@ -351,7 +361,15 @@ template <> struct action<path_abempty> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.path = std::string_view(begin(in), size(in));
+    parts.path = in.string();
+  }
+};
+
+template <> struct action<path_empty> {
+  template <typename Input>
+  static void apply(Input const& in, uri::components& parts)
+  {
+    parts.path = std::string{};
   }
 };
 
@@ -359,7 +377,7 @@ template <> struct action<path_absolute> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.path = std::string_view(begin(in), size(in));
+    parts.path = in.string();
   }
 };
 
@@ -367,7 +385,15 @@ template <> struct action<path_rootless> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.path = std::string_view(begin(in), size(in));
+    parts.path = in.string();
+  }
+};
+
+template <> struct action<path_noscheme> {
+  template <typename Input>
+  static void apply(Input const& in, uri::components& parts)
+  {
+    parts.path = in.string();
   }
 };
 
@@ -375,7 +401,7 @@ template <> struct action<query> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.query = std::string_view(begin(in), size(in));
+    parts.query = in.string();
   }
 };
 
@@ -383,7 +409,7 @@ template <> struct action<fragment> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.fragment = std::string_view(begin(in), size(in));
+    parts.fragment = in.string();
   }
 };
 
@@ -393,11 +419,10 @@ template <> struct action<userinfo_at> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    auto ui = std::string_view(begin(in), size(in));
-    if ((size(ui) >= 1) && (ui.back() == '@')) {
-      ui.remove_suffix(1);
-      parts.userinfo = ui;
-    }
+    auto ui = in.string();
+    CHECK((size(ui) >= 1) && (ui.back() == '@'));
+    ui.pop_back();
+    parts.userinfo = ui;
   }
 };
 
@@ -405,7 +430,7 @@ template <> struct action<host> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.host = std::string_view(begin(in), size(in));
+    parts.host = in.string();
   }
 };
 
@@ -413,7 +438,7 @@ template <> struct action<port> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.port = std::string_view(begin(in), size(in));
+    parts.port = in.string();
   }
 };
 
@@ -563,9 +588,54 @@ std::string normalize_pct_encoded(std::string_view string)
 bool starts_with(std::string_view str, std::string_view prefix)
 {
   if (str.size() >= prefix.size())
-    if (str.compare(0, prefix.size(), prefix) == 0)
-      return true;
+    return str.compare(0, prefix.size(), prefix) == 0;
   return false;
+}
+
+bool ends_with(std::string_view str, std::string_view suffix)
+{
+  if (str.size() >= suffix.size())
+    return str.compare(str.length() - suffix.length(), suffix.length(), suffix)
+           == 0;
+  return false;
+}
+
+std::string all_but_the_last(std::string_view path)
+{
+  // …
+  // excluding any characters after the right-most "/" in the base URI
+  // path, or excluding the entire base URI path if it does not contain
+  // any "/" characters).
+
+  auto x = path.rfind('/');
+  if (x == std::string_view::npos)
+    return std::string{};
+  return std::string(path.data(), x + 1);
+}
+
+// <https://tools.ietf.org/html/rfc3986#section-5.2.3>
+
+// 5.2.3.  Merge Paths
+
+std::string merge(components const& base_parts, components const& ref_parts)
+
+{
+  // Updated by Errata ID: 4789
+
+  // o  If the base URI has a defined authority component and an empty
+  //    path, or if the base URI's path is ending with "/..", then return
+  //    a string consisting of base's path concatenated with "/" and then
+  //    concatenated with the reference's path; otherwise,
+
+  if ((base_parts.authority && base_parts.path->empty())
+      || ends_with(*base_parts.path, "/..")) {
+    return "/" + *ref_parts.path;
+  }
+
+  // o  return a string consisting of the reference's path component
+  //    appended to all but the last segment of the base URI's path…
+
+  return all_but_the_last(*base_parts.path) + *ref_parts.path;
 }
 
 // <https://tools.ietf.org/html/rfc3986#section-5.2.4>
@@ -731,25 +801,16 @@ std::string normalize_host(std::string_view host)
 
 DLL_PUBLIC std::string normalize(components uri)
 {
-  std::string scheme;
-  std::string host;
-  std::string auth;
-  std::string path;
-
   // Normalize the scheme.
   if (uri.scheme) {
-    scheme.reserve(uri.scheme->length());
-    std::transform(begin(*uri.scheme), end(*uri.scheme),
-                   std::back_inserter(scheme),
+    std::transform(begin(*uri.scheme), end(*uri.scheme), begin(*uri.scheme),
                    [](unsigned char c) { return std::tolower(c); });
-    uri.scheme = scheme;
   }
 
   // Normalize the host name.
   if (uri.host) {
     if (!(is_IPv4address(*uri.host) || is_IP_literal(*uri.host))) {
-      host = normalize_host(*uri.host);
-      uri.host = host;
+      uri.host = normalize_host(*uri.host);
     }
   }
 
@@ -767,20 +828,18 @@ DLL_PUBLIC std::string normalize(components uri)
     authstream << ':' << *uri.port;
 
   if (uri.userinfo || uri.host || uri.port) {
-    auth = authstream.str();
-    uri.authority = auth;
+    uri.authority = authstream.str();
   }
 
   // Normalize the path.
   if (uri.path) {
-    path = remove_dot_segments(normalize_pct_encoded(*uri.path));
-    uri.path = path;
+    uri.path = remove_dot_segments(normalize_pct_encoded(*uri.path));
   }
 
   return to_string(uri);
 }
 
-DLL_PUBLIC uri resolve_ref(uri const& ref, uri const& base)
+DLL_PUBLIC absolute resolve_ref(absolute const& base, reference const& ref)
 {
   // 5.2.  Relative Resolution
 
@@ -788,16 +847,8 @@ DLL_PUBLIC uri resolve_ref(uri const& ref, uri const& base)
     return base;
   }
 
-  components base_parts;
-  CHECK(parse_absolute(base.string(), base_parts))
-      << "A base URI must conform to the <absolute-URI> syntax rule (RFC 3986 "
-         "Section 4.3).";
-
-  components ref_parts;
-  CHECK(parse_reference(ref.string(), ref_parts))
-      << "The URI reference syntax does not conform to RFC 3986 Section 4.1.";
-
-  std::string p;
+  components const& base_parts = base.parts();
+  components const& ref_parts = ref.parts();
 
   components target_parts;
 
@@ -809,24 +860,23 @@ DLL_PUBLIC uri resolve_ref(uri const& ref, uri const& base)
     target_parts.scheme = *ref_parts.scheme;
 
     // T.authority = R.authority;
-    target_parts.authority = ref_parts.authority;
-
-    if (ref_parts.path) {
-      p = std::string(ref_parts.path->data(), ref_parts.path->length());
-      p = remove_dot_segments(p);
-      target_parts.path = p;
+    if (ref_parts.authority) {
+      target_parts.authority = *ref_parts.authority;
     }
 
-    if (ref_parts.query)
+    if (ref_parts.path) {
+      target_parts.path = remove_dot_segments(*ref_parts.path);
+    }
+
+    if (ref_parts.query) {
       target_parts.query = *ref_parts.query;
+    }
   }
   else {
     if (ref_parts.authority) {
       target_parts.authority = *ref_parts.authority;
       if (ref_parts.path) {
-        p = std::string(ref_parts.path->data(), ref_parts.path->length());
-        p = remove_dot_segments(p);
-        target_parts.path = p;
+        target_parts.path = remove_dot_segments(*ref_parts.path);
       }
       target_parts.query = ref_parts.query;
     }
@@ -844,27 +894,33 @@ DLL_PUBLIC uri resolve_ref(uri const& ref, uri const& base)
       else {
         if (starts_with(*ref_parts.path, "/")) {
           if (ref_parts.path) {
-            p = std::string(ref_parts.path->data(), ref_parts.path->length());
-            p = remove_dot_segments(p);
-            target_parts.path = p;
+            target_parts.path = remove_dot_segments(*ref_parts.path);
           }
         }
         else {
           // T.path = merge(Base.path, R.path);
           // T.path = remove_dot_segments(T.path);
+          target_parts.path = remove_dot_segments(merge(base_parts, ref_parts));
         }
+
         // T.query = R.query;
+        target_parts.query = ref_parts.query;
       }
 
       // T.authority = Base.authority;
+      target_parts.authority = base_parts.authority;
     }
 
     // T.scheme = Base.scheme;
+    target_parts.scheme = base_parts.scheme;
   }
 
   // T.fragment = R.fragment;
+  if (ref_parts.fragment) {
+    target_parts.fragment = *ref_parts.fragment;
+  }
 
-  return uri(target_parts);
+  return absolute(target_parts);
 }
 
 } // namespace uri

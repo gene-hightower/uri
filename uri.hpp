@@ -25,14 +25,14 @@ public:
 const std::error_category& category();
 
 struct components {
-  std::optional<std::string_view> scheme;
-  std::optional<std::string_view> authority; // further brokwn down into:
-  std::optional<std::string_view> userinfo;  //  from authority
-  std::optional<std::string_view> host;      //  from authority
-  std::optional<std::string_view> port;      //  from authority
-  std::optional<std::string_view> path;
-  std::optional<std::string_view> query;
-  std::optional<std::string_view> fragment;
+  std::optional<std::string> scheme;
+  std::optional<std::string> authority; // further brokwn down into:
+  std::optional<std::string> userinfo;  //  from authority
+  std::optional<std::string> host;      //  from authority
+  std::optional<std::string> port;      //  from authority
+  std::optional<std::string> path;
+  std::optional<std::string> query;
+  std::optional<std::string> fragment;
 
   bool operator==(components const& rhs) const
   {
@@ -57,19 +57,6 @@ class uri {
 public:
   uri() = default;
 
-  explicit uri(std::string_view uri_in)
-    : uri_(uri_in)
-  {
-    if (!parse_generic(uri_, parts_)) {
-      throw syntax_error();
-    }
-  }
-
-  explicit uri(components const& uri_in)
-    : uri(to_string(uri_in))
-  {
-  }
-
   // clang-format off
   auto scheme()    const { return parts_.scheme; }
   auto authority() const { return parts_.authority; }
@@ -88,15 +75,68 @@ public:
   bool empty() const
   {
     return !(parts_.scheme || parts_.authority || parts_.userinfo || parts_.host
-             || parts_.port || parts_.path || parts_.query || parts_.fragment);
+             || parts_.port || (parts_.path && !parts_.path->empty())
+             || parts_.query || parts_.fragment);
   }
 
-private:
+  virtual ~uri(){}; // do I need this?
+
+protected:
   std::string uri_;
   components parts_;
 };
 
+class generic : public uri {
+public:
+  explicit generic(std::string uri_in)
+  {
+    uri_ = uri_in;
+    if (!parse_generic(uri_, parts_)) {
+      throw syntax_error();
+    }
+  }
+
+  explicit generic(components const& uri_in)
+    : generic(to_string(uri_in))
+  {
+  }
+};
+
+class absolute : public uri {
+public:
+  explicit absolute(std::string uri_in)
+  {
+    uri_ = uri_in;
+    if (!parse_absolute(uri_, parts_)) {
+      throw syntax_error();
+    }
+  }
+
+  explicit absolute(components const& uri_in)
+    : absolute(to_string(uri_in))
+  {
+  }
+};
+
+class reference : public uri {
+public:
+  explicit reference(std::string uri_in)
+  {
+    uri_ = uri_in;
+    if (!parse_reference(uri_, parts_)) {
+      throw syntax_error();
+    }
+  }
+
+  explicit reference(components const& uri_in)
+    : reference(to_string(uri_in))
+  {
+  }
+};
+
 DLL_PUBLIC std::string to_string(uri const&);
+
+DLL_PUBLIC absolute resolve_ref(absolute const& base, reference const& ref);
 
 } // namespace uri
 
