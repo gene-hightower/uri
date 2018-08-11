@@ -370,8 +370,6 @@ int test_resolution()
   };
   // clang-format on
 
-  using namespace uri;
-
   // 5.4.  Reference Resolution Examples
 
   uri::absolute base("http://a/b/c/d;p?q");
@@ -380,8 +378,8 @@ int test_resolution()
 
   for (auto&& test : tests) {
     uri::reference ref(test.ref);
-    auto resolved = resolve_ref(base, ref);
-    auto resolved_str = to_string(resolved);
+    auto resolved = uri::resolve_ref(base, ref);
+    auto resolved_str = uri::to_string(resolved);
     if (resolved_str != test.resolved) {
       LOG(ERROR) << "##### Failure #####";
       LOG(ERROR) << "for input == " << test.ref << '\n';
