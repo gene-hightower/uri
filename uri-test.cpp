@@ -385,43 +385,8 @@ int test_resolution()
     if (resolved_str != test.resolved) {
       LOG(ERROR) << "##### Failure #####";
       LOG(ERROR) << "for input == " << test.ref << '\n';
-
       LOG(ERROR) << "ref == " << ref;
-      if (ref.scheme())
-        LOG(ERROR) << "ref.scheme()     == " << *ref.scheme();
-      if (ref.authority())
-        LOG(ERROR) << "ref.authority()  == " << *ref.authority();
-      if (ref.userinfo())
-        LOG(ERROR) << "ref.userinfo()   == " << *ref.userinfo();
-      if (ref.host())
-        LOG(ERROR) << "ref.host()       == " << *ref.host();
-      if (ref.port())
-        LOG(ERROR) << "ref.port()       == " << *ref.port();
-      if (ref.path())
-        LOG(ERROR) << "ref.path()       == " << *ref.path();
-      if (ref.query())
-        LOG(ERROR) << "ref.query()      == " << *ref.query();
-      if (ref.fragment())
-        LOG(ERROR) << "ref.fragment()   == " << *ref.fragment();
-
       LOG(ERROR) << "resolved == " << resolved;
-      if (resolved.scheme())
-        LOG(ERROR) << "resolved.scheme()     == " << *resolved.scheme();
-      if (resolved.authority())
-        LOG(ERROR) << "resolved.authority()  == " << *resolved.authority();
-      if (resolved.userinfo())
-        LOG(ERROR) << "resolved.userinfo()   == " << *resolved.userinfo();
-      if (resolved.host())
-        LOG(ERROR) << "resolved.host()       == " << *resolved.host();
-      if (resolved.port())
-        LOG(ERROR) << "resolved.port()       == " << *resolved.port();
-      if (resolved.path())
-        LOG(ERROR) << "resolved.path()       == " << *resolved.path();
-      if (resolved.query())
-        LOG(ERROR) << "resolved.query()      == " << *resolved.query();
-      if (resolved.fragment())
-        LOG(ERROR) << "resolved.fragment()   == " << *resolved.fragment();
-
       LOG(ERROR) << "should match == " << test.resolved;
       ++failures;
     }
@@ -436,6 +401,7 @@ int main(int argc, char* argv[])
 
   failures += test_good();
   failures += test_bad();
+  failures += test_resolution();
 
   {
     // the two explicit tests from RFC 3986:
@@ -446,80 +412,23 @@ int main(int argc, char* argv[])
     CHECK_EQ(uri::normalize(parts), "mid/6");
   }
 
-  failures += test_resolution();
-
-  // Parse all the command line args as URIs.
+  // Parse command line args as URIs.
 
   for (auto i = 1; i < argc; ++i) {
     uri::reference u{argv[i]};
 
-    if (u.scheme())
-      std::cout << "scheme()     == " << *u.scheme() << '\n';
-    if (u.authority())
-      std::cout << "authority()  == " << *u.authority() << '\n';
-    if (u.userinfo())
-      std::cout << "userinfo()   == " << *u.userinfo() << '\n';
-    if (u.host())
-      std::cout << "host()       == " << *u.host() << '\n';
-    if (u.port())
-      std::cout << "port()       == " << *u.port() << '\n';
-    if (u.path())
-      std::cout << "path()       == " << *u.path() << '\n';
-    if (u.query())
-      std::cout << "query()      == " << *u.query() << '\n';
-    if (u.fragment())
-      std::cout << "fragment()   == " << *u.fragment() << '\n';
+    std::cout << "scheme == " << (u.scheme() ? *u.scheme() : "{}") << '\n'
+              << "auth   == " << (u.authority() ? *u.authority() : "{}") << '\n'
+              << "user   == " << (u.userinfo() ? *u.userinfo() : "{}") << '\n'
+              << "host   == " << (u.host() ? *u.host() : "{}") << '\n'
+              << "port   == " << (u.port() ? *u.port() : "{}") << '\n'
+              << "path   == " << (u.path() ? *u.path() : "{}") << '\n'
+              << "query  == " << (u.query() ? *u.query() : "{}") << '\n'
+              << "frag   == " << (u.fragment() ? *u.fragment() : "{}") << '\n';
 
-    std::cout << "\n";
+    std::cout << "string == " << uri::to_string(u) << '\n';
 
-    std::cout << "normal form  == " << uri::normalize(u.parts()) << '\n';
-
-    std::cout << "\n// test case:\n";
-
-    std::cout << "{\"" << u.string() << "\",\n{";
-
-    if (u.scheme())
-      std::cout << "\"" << *u.scheme() << "\", ";
-    else
-      std::cout << "{}, ";
-
-    if (u.authority())
-      std::cout << "\"" << *u.authority() << "\", ";
-    else
-      std::cout << "{}, ";
-
-    if (u.userinfo())
-      std::cout << "\"" << *u.userinfo() << "\", ";
-    else
-      std::cout << "{}, ";
-
-    if (u.host())
-      std::cout << "\"" << *u.host() << "\", ";
-    else
-      std::cout << "{}, ";
-
-    if (u.port())
-      std::cout << "\"" << *u.port() << "\", ";
-    else
-      std::cout << "{}, ";
-
-    if (u.path())
-      std::cout << "\"" << *u.path() << "\", ";
-    else
-      std::cout << "{}, ";
-
-    if (u.query())
-      std::cout << "\"" << *u.query() << "\", ";
-    else
-      std::cout << "{}, ";
-
-    if (u.fragment())
-      std::cout << "\"" << *u.fragment() << "\", ";
-    else
-      std::cout << "{}, ";
-
-    std::cout << "},\n";
-    std::cout << "},\n";
+    std::cout << "norm   == " << uri::normalize(u.parts()) << '\n';
   }
 
   if (failures)
