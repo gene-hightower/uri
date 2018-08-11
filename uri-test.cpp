@@ -358,7 +358,6 @@ int test_resolution()
 
   // 5.4.1.  Normal Examples
   for (auto&& test : tests) {
-    LOG(INFO) << test.ref << " should resolve to " << test.resolved;
     uri::reference ref(test.ref);
     auto resolved = resolve_ref(base, ref);
     auto resolved_str = to_string(resolved);

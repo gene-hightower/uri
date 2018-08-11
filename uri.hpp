@@ -136,7 +136,7 @@ public:
 
 DLL_PUBLIC std::string to_string(uri const&);
 
-DLL_PUBLIC absolute resolve_ref(absolute const& base, reference const& ref);
+DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref);
 
 } // namespace uri
 

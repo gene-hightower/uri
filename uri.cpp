@@ -324,7 +324,7 @@ struct absolute_URI  : seq<scheme_colon, hier_part, opt<seq<one<'?'>, query>>> {
 struct absolute_URI_eof : seq<absolute_URI, eof> {};
 
 //     URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
-struct URI           : seq<absolute_URI, opt<seq<one<'#'>, fragment>>> {};
+struct URI           : seq<scheme_colon, hier_part, opt<seq<one<'?'>, query>>, opt<seq<one<'#'>, fragment>>> {};
 struct URI_eof       : seq<URI, eof> {};
 
 //     URI-reference = URI / relative-ref
@@ -839,7 +839,7 @@ DLL_PUBLIC std::string normalize(components uri)
   return to_string(uri);
 }
 
-DLL_PUBLIC absolute resolve_ref(absolute const& base, reference const& ref)
+DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
 {
   // 5.2.  Relative Resolution
 
@@ -920,7 +920,7 @@ DLL_PUBLIC absolute resolve_ref(absolute const& base, reference const& ref)
     target_parts.fragment = *ref_parts.fragment;
   }
 
-  return absolute(target_parts);
+  return generic(target_parts);
 }
 
 } // namespace uri
