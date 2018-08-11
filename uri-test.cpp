@@ -322,6 +322,9 @@ int test_resolution()
 
   // clang-format off
   test_case tests[] = {
+
+      // 5.4.1.  Normal Examples
+
       {"g:h",     "g:h"},
       {"g",       "http://a/b/c/g"},
       {"./g",     "http://a/b/c/g"},
@@ -345,6 +348,25 @@ int test_resolution()
       {"../..",   "http://a/"},
       {"../../",  "http://a/"},
       {"../../g", "http://a/g"},
+
+      // 5.4.2.  Abnormal Examples
+
+      {"../../../g",    "http://a/g"},
+      {"../../../../g", "http://a/g"},
+
+      {"/./g",          "http://a/g"},
+      {"/../g",         "http://a/g"},
+      {"g.",            "http://a/b/c/g."},
+      {".g",            "http://a/b/c/.g"},
+      {"g..",           "http://a/b/c/g.."},
+      {"..g",           "http://a/b/c/..g"},
+
+      {"g?y/./x",       "http://a/b/c/g?y/./x"},
+      {"g?y/../x",      "http://a/b/c/g?y/../x"},
+      {"g#s/./x",       "http://a/b/c/g#s/./x"},
+      {"g#s/../x",      "http://a/b/c/g#s/../x"},
+
+      {"http:g",        "http:g"}, // for strict parsers
   };
   // clang-format on
 
@@ -356,7 +378,6 @@ int test_resolution()
 
   auto failures = 0;
 
-  // 5.4.1.  Normal Examples
   for (auto&& test : tests) {
     uri::reference ref(test.ref);
     auto resolved = resolve_ref(base, ref);
