@@ -9,6 +9,8 @@
 #include <string>
 #include <string_view>
 
+#include <boost/operators.hpp>
+
 namespace uri {
 
 enum class error {
@@ -33,15 +35,6 @@ struct components {
   std::optional<std::string> path;
   std::optional<std::string> query;
   std::optional<std::string> fragment;
-
-  bool operator==(components const& rhs) const
-  {
-    return (scheme == rhs.scheme) && (authority == rhs.authority)
-           && (userinfo == rhs.userinfo) && (host == rhs.host)
-           && (port == rhs.port) && (path == rhs.path) && (query == rhs.query)
-           && (fragment == rhs.fragment);
-  }
-  bool operator!=(components const& rhs) const { return !(*this == rhs); }
 };
 
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& comp);
@@ -53,31 +46,28 @@ DLL_PUBLIC std::string to_string(components const&);
 
 DLL_PUBLIC std::string normalize(components);
 
-class uri {
+class uri : boost::operators<uri> {
 public:
-  uri() = default;
 
   // clang-format off
-  auto scheme()    const { return parts_.scheme; }
-  auto authority() const { return parts_.authority; }
-  auto userinfo()  const { return parts_.userinfo; }
-  auto host()      const { return parts_.host; }
-  auto port()      const { return parts_.port; }
-  auto path()      const { return parts_.path; }
-  auto query()     const { return parts_.query; }
-  auto fragment()  const { return parts_.fragment; }
+  auto const& scheme()    const { return parts_.scheme; }
+  auto const& authority() const { return parts_.authority; }
+  auto const& userinfo()  const { return parts_.userinfo; }
+  auto const& host()      const { return parts_.host; }
+  auto const& port()      const { return parts_.port; }
+  auto const& path()      const { return parts_.path; }
+  auto const& query()     const { return parts_.query; }
+  auto const& fragment()  const { return parts_.fragment; }
   // clang-format on
 
   components const& parts() const { return parts_; }
 
   std::string_view string() const { return uri_; }
 
-  bool empty() const
-  {
-    return !(parts_.scheme || parts_.authority || parts_.userinfo || parts_.host
-             || parts_.port || (parts_.path && !parts_.path->empty())
-             || parts_.query || parts_.fragment);
-  }
+  bool empty() const { return string().empty(); }
+
+  bool operator<(uri const& rhs) const { return uri_ < rhs.uri_; }
+  bool operator==(uri const& rhs) const { return uri_ == rhs.uri_; }
 
 protected:
   std::string uri_;

@@ -2,6 +2,19 @@
 
 #include <glog/logging.h>
 
+bool operator==(uri::components const& lhs, uri::components const& rhs)
+{
+  return (lhs.scheme == rhs.scheme) && (lhs.authority == rhs.authority)
+         && (lhs.userinfo == rhs.userinfo) && (lhs.host == rhs.host)
+         && (lhs.port == rhs.port) && (lhs.path == rhs.path)
+         && (lhs.query == rhs.query) && (lhs.fragment == rhs.fragment);
+}
+
+bool operator!=(uri::components const& lhs, uri::components const& rhs)
+{
+  return !(lhs == rhs);
+}
+
 int test_good()
 {
   struct test_case {
