@@ -79,8 +79,6 @@ public:
              || parts_.query || parts_.fragment);
   }
 
-  virtual ~uri(){}; // do I need this?
-
 protected:
   std::string uri_;
   components parts_;
