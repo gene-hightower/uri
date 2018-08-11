@@ -218,15 +218,6 @@ struct dec_octet     : sor<seq<string<'2','5'>, range<'0','5'>>,
 struct IPv4address   : seq<dec_octet, one<'.'>, dec_octet, one<'.'>, dec_octet, one<'.'>, dec_octet> {};
 struct IPv4address_eof : seq<IPv4address, eof> {};
 
-// The definition of IPv4address above is notably more strict than the
-// format for SMTP (RFC 5321) which is:
-//
-// IPv4-address-literal  = Snum 3("."  Snum)
-// Snum           = 1*3DIGIT
-//                ; representing a decimal integer
-//                ; value in the range 0 through 255
-
-// Back to 3986:
 //     h16           = 1*4HEXDIG
 //                   ; 16 bits of address represented in hexadecimal
 struct h16           : rep_min_max<1, 4, HEXDIG> {};
@@ -936,9 +927,7 @@ DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
     os << *uri.scheme << ':';
   }
 
-  // I guess the more specific parts should take precedence over the
-  // more generic authority part.  Or maybe I should verify that they
-  // are equivalent.  Not sure.
+  // The individual parts take precedence over the single authority.
 
   if (uri.userinfo || uri.host || uri.port) {
     os << "//";
@@ -946,7 +935,7 @@ DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
     if (uri.userinfo)
       os << *uri.userinfo << '@';
 
-    // maybe host can never be undefined, and never zero length?
+    // Host is never undefined, but perhaps zero length.
     if (uri.host)
       os << *uri.host;
 
