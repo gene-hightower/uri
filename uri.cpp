@@ -266,7 +266,14 @@ struct IP_literal    :  seq<one<'['>, sor<IPv6addrz, IPv6address, IPvFuture>, on
 struct IP_literal_eof: seq<IP_literal, eof> {};
 
 //     port          = *DIGIT
-struct port          : star<DIGIT> {};
+// But actually, in the IP world, ports are unsigned 16 bit numbers.
+  struct port          : sor<seq<string<'6','5','5','3'>, range<'0','5'>>,
+                             seq<string<'6','5','5'>, range<'0','2'>, DIGIT>,
+                             seq<string<'6','5'>, range<'0', '4'>, rep<2, DIGIT>>,
+                             seq<one<'6'>, range<'0', '4'>, rep<3, DIGIT>>,
+                             seq<range<'0','5'>, rep<4, DIGIT>>,
+                             rep_min_max<0, 4, DIGIT>
+                             > {};
 
 //     host          = IP-literal / IPv4address / reg-name
 struct host          : sor<IP_literal, IPv4address, reg_name> {};
