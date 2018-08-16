@@ -272,7 +272,8 @@ struct IP_literal_eof: seq<IP_literal, eof> {};
                              seq<string<'6','5'>, range<'0', '4'>, rep<2, DIGIT>>,
                              seq<one<'6'>, range<'0', '4'>, rep<3, DIGIT>>,
                              seq<range<'0','5'>, rep<4, DIGIT>>,
-                             rep_min_max<0, 4, DIGIT>
+                             rep_min_max<0, 4, DIGIT>,
+                             TAOCPP_PEGTL_STRING("00000")
                              > {};
 
 //     host          = IP-literal / IPv4address / reg-name
