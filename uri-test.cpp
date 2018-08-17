@@ -493,71 +493,73 @@ int main(int argc, char* argv[])
     }
 
     if (!FLAGS_testcase) {
-    std::cout << "uri    == <" << argv[i] <<  ">\n"
-              << "scheme == " << (u.scheme() ? *u.scheme() : "{}") << '\n'
-              << "auth   == " << (u.authority() ? *u.authority() : "{}") << '\n'
-              << "user   == " << (u.userinfo() ? *u.userinfo() : "{}") << '\n'
-              << "host   == " << (u.host() ? *u.host() : "{}") << '\n'
-              << "port   == " << (u.port() ? *u.port() : "{}") << '\n'
-              << "path   == " << (u.path() ? *u.path() : "{}") << '\n'
-              << "query  == " << (u.query() ? *u.query() : "{}") << '\n'
-              << "frag   == " << (u.fragment() ? *u.fragment() : "{}") << '\n';
+      std::cout << "uri    == <" << argv[i] << ">\n"
+                << "scheme == " << (u.scheme() ? *u.scheme() : "{}") << '\n'
+                << "auth   == " << (u.authority() ? *u.authority() : "{}")
+                << '\n'
+                << "user   == " << (u.userinfo() ? *u.userinfo() : "{}") << '\n'
+                << "host   == " << (u.host() ? *u.host() : "{}") << '\n'
+                << "port   == " << (u.port() ? *u.port() : "{}") << '\n'
+                << "path   == " << (u.path() ? *u.path() : "{}") << '\n'
+                << "query  == " << (u.query() ? *u.query() : "{}") << '\n'
+                << "frag   == " << (u.fragment() ? *u.fragment() : "{}")
+                << '\n';
     }
 
     if (FLAGS_testcase) {
-    std::cout << "{ \"" << argv[i] << "\",\n"
-              << "  {";
+      std::cout << "{ \"" << argv[i] << "\",\n"
+                << "  {";
 
-    std::cout << "\n  /*  scheme*/ ";
-    if (u.scheme())
-      std::cout << "\"" << *u.scheme() << "\",";
-    else
-      std::cout << "{},";
+      std::cout << "\n  /*  scheme*/ ";
+      if (u.scheme())
+        std::cout << "\"" << *u.scheme() << "\",";
+      else
+        std::cout << "{},";
 
-    std::cout << "\n  /*    auth*/ ";
-    if (u.authority())
-      std::cout << "\"" << *u.authority() << "\",";
-    else
-      std::cout << "{},";
+      std::cout << "\n  /*    auth*/ ";
+      if (u.authority())
+        std::cout << "\"" << *u.authority() << "\",";
+      else
+        std::cout << "{},";
 
-    std::cout << "\n  /*userinfo*/ ";
-    if (u.userinfo())
-      std::cout << "\"" << *u.userinfo() << "\",";
-    else
-      std::cout << "{},";
+      std::cout << "\n  /*userinfo*/ ";
+      if (u.userinfo())
+        std::cout << "\"" << *u.userinfo() << "\",";
+      else
+        std::cout << "{},";
 
-    std::cout << "\n  /*    host*/ ";
-    if (u.host())
-      std::cout << "\"" << *u.host() << "\",";
-    else
-      std::cout << "{},";
+      std::cout << "\n  /*    host*/ ";
+      if (u.host())
+        std::cout << "\"" << *u.host() << "\",";
+      else
+        std::cout << "{},";
 
-    std::cout << "\n  /*    port*/ ";
-    if (u.port())
-      std::cout << "\"" << *u.port() << "\",";
-    else
-      std::cout << "{},";
+      std::cout << "\n  /*    port*/ ";
+      if (u.port())
+        std::cout << "\"" << *u.port() << "\",";
+      else
+        std::cout << "{},";
 
-    std::cout << "\n  /*    path*/ ";
-    if (u.path())
-      std::cout << "\"" << *u.path() << "\",";
-    else
-      std::cout << "{},";
+      std::cout << "\n  /*    path*/ ";
+      if (u.path())
+        std::cout << "\"" << *u.path() << "\",";
+      else
+        std::cout << "{},";
 
-    std::cout << "\n  /*   query*/ ";
-    if (u.query())
-      std::cout << "\"" << *u.query() << "\",";
-    else
-      std::cout << "{},";
+      std::cout << "\n  /*   query*/ ";
+      if (u.query())
+        std::cout << "\"" << *u.query() << "\",";
+      else
+        std::cout << "{},";
 
-    std::cout << "\n  /*fragment*/ ";
-    if (u.fragment())
-      std::cout << "\"" << *u.fragment() << "\",";
-    else
-      std::cout << "{},";
+      std::cout << "\n  /*fragment*/ ";
+      if (u.fragment())
+        std::cout << "\"" << *u.fragment() << "\",";
+      else
+        std::cout << "{},";
 
-    std::cout << "\n  },\n},\n";
-  }
+      std::cout << "\n  },\n},\n";
+    }
   }
 
   if (failures)
