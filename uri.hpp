@@ -46,9 +46,13 @@ DLL_PUBLIC std::string to_string(components const&);
 
 DLL_PUBLIC std::string normalize(components);
 
+enum class form : bool {
+  unnormalized,
+  normalized,
+};
+
 class uri : boost::operators<uri> {
 public:
-
   // clang-format off
   auto const& scheme()    const { return parts_.scheme; }
   auto const& authority() const { return parts_.authority; }
@@ -66,60 +70,31 @@ public:
 
   bool empty() const { return string().empty(); }
 
-  bool operator<(uri const& rhs) const { return uri_ < rhs.uri_; }
-  bool operator==(uri const& rhs) const { return uri_ == rhs.uri_; }
+  bool operator<(uri const& rhs) const;
+  bool operator==(uri const& rhs) const;
 
 protected:
   std::string uri_;
   components parts_;
+  form form_{form::unnormalized};
 };
 
 class generic : public uri {
 public:
-  explicit generic(std::string uri_in)
-  {
-    uri_ = uri_in;
-    if (!parse_generic(uri_, parts_)) {
-      throw syntax_error();
-    }
-  }
-
-  explicit generic(components const& uri_in)
-    : generic(to_string(uri_in))
-  {
-  }
+  generic(std::string uri_in, bool norm = false);
+  generic(components const& uri_in, bool norm = false);
 };
 
 class absolute : public uri {
 public:
-  explicit absolute(std::string uri_in)
-  {
-    uri_ = uri_in;
-    if (!parse_absolute(uri_, parts_)) {
-      throw syntax_error();
-    }
-  }
-
-  explicit absolute(components const& uri_in)
-    : absolute(to_string(uri_in))
-  {
-  }
+  absolute(std::string uri_in, bool norm = false);
+  absolute(components const& uri_in, bool norm = false);
 };
 
 class reference : public uri {
 public:
-  explicit reference(std::string uri_in)
-  {
-    uri_ = uri_in;
-    if (!parse_reference(uri_, parts_)) {
-      throw syntax_error();
-    }
-  }
-
-  explicit reference(components const& uri_in)
-    : reference(to_string(uri_in))
-  {
-  }
+  reference(std::string uri_in, bool norm = false);
+  reference(components const& uri_in, bool norm = false);
 };
 
 DLL_PUBLIC std::string to_string(uri const&);

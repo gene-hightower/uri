@@ -3,8 +3,6 @@
 
 #include <iostream>
 
-#include <glog/logging.h>
-
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
@@ -20,6 +18,8 @@
 
 using namespace tao::pegtl;
 using namespace tao::pegtl::abnf;
+
+#include <glog/logging.h>
 
 namespace uri {
 class category_impl : public std::error_category {
@@ -500,6 +500,81 @@ std::string to_string(components const& uri)
   return os.str();
 }
 
+bool uri::operator<(uri const& rhs) const
+{
+  if (form_ != rhs.form_) {
+    LOG(FATAL) << "forms don't match for these URIs: " << *this << " " << rhs;
+    throw syntax_error();
+  }
+  return uri_ < rhs.uri_;
+}
+
+bool uri::operator==(uri const& rhs) const
+{
+  if (form_ != rhs.form_) {
+    LOG(FATAL) << "forms don't match for these URIs: " << *this << " " << rhs;
+    throw syntax_error();
+  }
+  return uri_ == rhs.uri_;
+}
+
+generic::generic(std::string uri_in, bool norm)
+{
+  uri_ = uri_in;
+  if (!parse_generic(uri_, parts_)) {
+    throw syntax_error();
+  }
+  if (norm) {
+    uri_ = normalize(parts_);
+    CHECK(parse_generic(uri_, parts_));
+    form_ = form::normalized;
+  }
+}
+
+generic::generic(components const& uri_in, bool norm)
+  : generic(norm ? normalize(uri_in) : to_string(uri_in), false)
+{
+  form_ = norm ? form::normalized : form::unnormalized;
+}
+
+absolute::absolute(std::string uri_in, bool norm)
+{
+  uri_ = uri_in;
+  if (!parse_absolute(uri_, parts_)) {
+    throw syntax_error();
+  }
+  if (norm) {
+    uri_ = normalize(parts_);
+    CHECK(parse_absolute(uri_, parts_));
+    form_ = form::normalized;
+  }
+}
+
+absolute::absolute(components const& uri_in, bool norm)
+  : absolute(norm ? normalize(uri_in) : to_string(uri_in), false)
+{
+  form_ = norm ? form::normalized : form::unnormalized;
+}
+
+reference::reference(std::string uri_in, bool norm)
+{
+  uri_ = uri_in;
+  if (!parse_reference(uri_, parts_)) {
+    throw syntax_error();
+  }
+  if (norm) {
+    uri_ = normalize(parts_);
+    CHECK(parse_reference(uri_, parts_));
+    form_ = form::normalized;
+  }
+}
+
+reference::reference(components const& uri_in, bool norm)
+  : reference(norm ? normalize(uri_in) : to_string(uri_in), false)
+{
+  form_ = norm ? form::normalized : form::unnormalized;
+}
+
 namespace {
 // clang-format off
 
@@ -796,6 +871,7 @@ std::string normalize_host(std::string_view host)
 
   return norm_host;
 }
+
 } // namespace
 
 DLL_PUBLIC std::string normalize(components uri)
@@ -813,7 +889,54 @@ DLL_PUBLIC std::string normalize(components uri)
     }
   }
 
-  // we'll want to remove default port numbers
+  /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  // I think we'll want to remove default port numbers.
+
+  enum class {
+    must_not_have,
+    may_have,
+    must_have,
+  } host;
+
+  // https://url.spec.whatwg.org/#url-miscellaneous
+
+  struct special_scheme {
+    char const* scheme;
+    std::optional<uint16_t> port;
+  };
+
+  special_scheme special[] = {
+    {"ftp",    21},
+    {"file",   {}},
+    {"gopher", 70},
+    {"http",   80},
+    {"https", 443},
+    {"ws",     80},
+    {"wss",   443},
+  };
+
+  if (uri.port) {
+    std::optional<uint16_t> default_port;
+    for (auto&& spc : special) {
+      if (uri.scheme == spc.scheme) {
+        if (default_port == spc.port)
+          break;
+      }
+    }
+  }
+
+  // Obviously, this doesn't do anything yet.  Once we get into scheme
+  // specific validation there are a bunch of issues to deal with.
+  // Like the "file" scheme must not have a host.  Both "ws" and "wss"
+  // must have a host.  And this list from whatwg is very sparse.
+
+  The whole list at:
+  <https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml>
+  has like 288 schemes to deal with, of which 95 are "Permanent."
+
+  The whatwg list has gopher, but not news, mailto, or ssh.  Is that for real?
+
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
   // Rebuild authority from user@host:port triple.
   std::stringstream authstream;

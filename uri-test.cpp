@@ -264,7 +264,7 @@ int test_bad()
   // Verify a bunch of bad URIs all throw exceptions.
   auto failures = 0;
 
-  char const* bad_uris[]{
+  constexpr char const* bad_uris[]{
       "http://",
       "http://.",
       "http://..",
@@ -334,7 +334,7 @@ int test_resolution()
   };
 
   // clang-format off
-  test_case tests[] = {
+  constexpr test_case tests[] = {
 
       // 5.4.1.  Normal Examples
 
@@ -413,10 +413,43 @@ int test_resolution()
   return failures;
 }
 
+int test_comparison()
+{
+  auto failures = 0;
+
+  struct test_case {
+    char const* lhs;
+    char const* rhs;
+  };
+
+  // clang-format off
+  constexpr test_case tests[] = {
+    {"http://www.example.com/",        "http://www.example.com/"},
+    {"http://www.example.com/",        "HTTP://www.example.com/"},
+    {"http://www.example.com/",        "http://WWW.EXAMPLE.COM/"},
+    {"http://www.example.com/./path",  "http://www.example.com/path"},
+    {"http://www.example.com/1/../2/", "http://www.example.com/2/"},
+    {"example://a/b/c/%7Bfoo%7D",      "eXAMPLE://a/./b/../b/%63/%7bfoo%7d"},
+  };
+  // clang-format on
+
+  for (auto&& test : tests) {
+    uri::generic lhs{test.lhs, true};
+    uri::generic rhs{test.rhs, true};
+    if (lhs != rhs) {
+      LOG(ERROR) << lhs << " != " << rhs;
+      ++failures;
+    }
+  }
+
+  return failures;
+}
+
 int main(int argc, char* argv[])
 {
   auto failures = 0;
 
+  failures += test_comparison();
   failures += test_good();
   failures += test_bad();
   failures += test_resolution();
