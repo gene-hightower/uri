@@ -958,6 +958,14 @@ DLL_PUBLIC std::string normalize(components uri)
     uri.path = remove_dot_segments(normalize_pct_encoded(*uri.path));
   }
 
+  if (uri.query) {
+    uri.query = normalize_pct_encoded(*uri.query);
+  }
+
+  if (uri.fragment) {
+    uri.query = normalize_pct_encoded(*uri.fragment);
+  }
+
   return to_string(uri);
 }
 
