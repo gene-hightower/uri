@@ -194,6 +194,19 @@ int test_good()
   {"mailto:John.Doe@example.com",
   {"mailto", {}, {}, {}, {}, "John.Doe@example.com", {}, {}, }, },
 
+  { "mailto:%22not%40me%22@example.org",
+    {
+    /*  scheme*/ "mailto",
+    /*    auth*/ {},
+    /*userinfo*/ {},
+    /*    host*/ {},
+    /*    port*/ {},
+    /*    path*/ "%22not%40me%22@example.org",
+    /*   query*/ {},
+    /*fragment*/ {},
+    },
+  },
+
   {"news:comp.infosystems.www.servers.unix",
   {"news", {}, {}, {}, {}, "comp.infosystems.www.servers.unix", {}, {}, }, },
 
@@ -507,58 +520,58 @@ int main(int argc, char* argv[])
     }
 
     if (FLAGS_testcase) {
-      std::cout << "{ \"" << argv[i] << "\",\n"
-                << "  {";
+      std::cout << "  { \"" << argv[i] << "\",\n"
+                << "    {";
 
-      std::cout << "\n  /*  scheme*/ ";
+      std::cout << "\n    /*  scheme*/ ";
       if (u.scheme())
         std::cout << "\"" << *u.scheme() << "\",";
       else
         std::cout << "{},";
 
-      std::cout << "\n  /*    auth*/ ";
+      std::cout << "\n    /*    auth*/ ";
       if (u.authority())
         std::cout << "\"" << *u.authority() << "\",";
       else
         std::cout << "{},";
 
-      std::cout << "\n  /*userinfo*/ ";
+      std::cout << "\n    /*userinfo*/ ";
       if (u.userinfo())
         std::cout << "\"" << *u.userinfo() << "\",";
       else
         std::cout << "{},";
 
-      std::cout << "\n  /*    host*/ ";
+      std::cout << "\n    /*    host*/ ";
       if (u.host())
         std::cout << "\"" << *u.host() << "\",";
       else
         std::cout << "{},";
 
-      std::cout << "\n  /*    port*/ ";
+      std::cout << "\n    /*    port*/ ";
       if (u.port())
         std::cout << "\"" << *u.port() << "\",";
       else
         std::cout << "{},";
 
-      std::cout << "\n  /*    path*/ ";
+      std::cout << "\n    /*    path*/ ";
       if (u.path())
         std::cout << "\"" << *u.path() << "\",";
       else
         std::cout << "{},";
 
-      std::cout << "\n  /*   query*/ ";
+      std::cout << "\n    /*   query*/ ";
       if (u.query())
         std::cout << "\"" << *u.query() << "\",";
       else
         std::cout << "{},";
 
-      std::cout << "\n  /*fragment*/ ";
+      std::cout << "\n    /*fragment*/ ";
       if (u.fragment())
         std::cout << "\"" << *u.fragment() << "\",";
       else
         std::cout << "{},";
 
-      std::cout << "\n  },\n},\n";
+      std::cout << "\n    },  \n  },\n";
     }
   }
 
