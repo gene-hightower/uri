@@ -6,6 +6,7 @@ uri_STEMS := uri
 CXXFLAGS += -IPEGTL/include
 LDLIBS += \
 	-lfmt \
+	-lgflags \
 	-lunistring
 
 TESTS := uri-test

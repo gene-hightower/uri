@@ -2,6 +2,11 @@
 
 #include <glog/logging.h>
 
+#include <gflags/gflags.h>
+namespace gflags {
+// in case we didn't have one
+}
+
 bool operator==(uri::components const& lhs, uri::components const& rhs)
 {
   return (lhs.scheme == rhs.scheme) && (lhs.authority == rhs.authority)
@@ -445,8 +450,18 @@ int test_comparison()
   return failures;
 }
 
+DEFINE_string(base, "", "base URI");
+DEFINE_bool(testcase, false, "print a test case for each URI");
+DEFINE_bool(normalize, true, "normalize each URI");
+
 int main(int argc, char* argv[])
 {
+  { // Need to work with either namespace.
+    using namespace gflags;
+    using namespace google;
+    ParseCommandLineFlags(&argc, &argv, true);
+  }
+
   auto failures = 0;
 
   failures += test_comparison();
@@ -468,7 +483,18 @@ int main(int argc, char* argv[])
   for (auto i = 1; i < argc; ++i) {
     uri::reference u{argv[i]};
 
-    std::cout << "scheme == " << (u.scheme() ? *u.scheme() : "{}") << '\n'
+    if (!FLAGS_base.empty()) {
+      uri::absolute base(FLAGS_base);
+      u = uri::reference(uri::to_string(uri::resolve_ref(base, u)));
+    }
+
+    if (FLAGS_normalize) {
+      u = uri::reference(uri::normalize(u.parts()));
+    }
+
+    if (!FLAGS_testcase) {
+    std::cout << "uri    == <" << argv[i] <<  ">\n"
+              << "scheme == " << (u.scheme() ? *u.scheme() : "{}") << '\n'
               << "auth   == " << (u.authority() ? *u.authority() : "{}") << '\n'
               << "user   == " << (u.userinfo() ? *u.userinfo() : "{}") << '\n'
               << "host   == " << (u.host() ? *u.host() : "{}") << '\n'
@@ -476,10 +502,62 @@ int main(int argc, char* argv[])
               << "path   == " << (u.path() ? *u.path() : "{}") << '\n'
               << "query  == " << (u.query() ? *u.query() : "{}") << '\n'
               << "frag   == " << (u.fragment() ? *u.fragment() : "{}") << '\n';
+    }
 
-    std::cout << "string == " << uri::to_string(u) << '\n';
+    if (FLAGS_testcase) {
+    std::cout << "{ \"" << argv[i] << "\",\n"
+              << "  {";
 
-    std::cout << "norm   == " << uri::normalize(u.parts()) << '\n';
+    std::cout << "\n  /*  scheme*/ ";
+    if (u.scheme())
+      std::cout << "\"" << *u.scheme() << "\",";
+    else
+      std::cout << "{},";
+
+    std::cout << "\n  /*    auth*/ ";
+    if (u.authority())
+      std::cout << "\"" << *u.authority() << "\",";
+    else
+      std::cout << "{},";
+
+    std::cout << "\n  /*userinfo*/ ";
+    if (u.userinfo())
+      std::cout << "\"" << *u.userinfo() << "\",";
+    else
+      std::cout << "{},";
+
+    std::cout << "\n  /*    host*/ ";
+    if (u.host())
+      std::cout << "\"" << *u.host() << "\",";
+    else
+      std::cout << "{},";
+
+    std::cout << "\n  /*    port*/ ";
+    if (u.port())
+      std::cout << "\"" << *u.port() << "\",";
+    else
+      std::cout << "{},";
+
+    std::cout << "\n  /*    path*/ ";
+    if (u.path())
+      std::cout << "\"" << *u.path() << "\",";
+    else
+      std::cout << "{},";
+
+    std::cout << "\n  /*   query*/ ";
+    if (u.query())
+      std::cout << "\"" << *u.query() << "\",";
+    else
+      std::cout << "{},";
+
+    std::cout << "\n  /*fragment*/ ";
+    if (u.fragment())
+      std::cout << "\"" << *u.fragment() << "\",";
+    else
+      std::cout << "{},";
+
+    std::cout << "\n  },\n},\n";
+  }
   }
 
   if (failures)
