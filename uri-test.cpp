@@ -443,7 +443,8 @@ int test_comparison()
   // clang-format off
   constexpr test_case tests[] = {
     {"http://www.example.com/",        "http://www.example.com/"},
-    {"http://www.example.com/",        "HTTP://www.example.com/"},
+    {"http://www.example.com/",        "http://www.example.com:80/"},
+    {"http://www.example.com/",        "http://www.example.com:0080/"},
     {"http://www.example.com/",        "http://WWW.EXAMPLE.COM/"},
     {"http://www.example.com/./path",  "http://www.example.com/path"},
     {"http://www.example.com/1/../2/", "http://www.example.com/2/"},
