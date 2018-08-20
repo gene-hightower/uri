@@ -506,7 +506,7 @@ int main(int argc, char* argv[])
     }
 
     if (!FLAGS_testcase) {
-      std::cout << "uri    == <" << argv[i] << ">\n"
+      std::cout << "uri    == <" << u << ">\n"
                 << "scheme == " << (u.scheme() ? *u.scheme() : "{}") << '\n'
                 << "auth   == " << (u.authority() ? *u.authority() : "{}")
                 << '\n'

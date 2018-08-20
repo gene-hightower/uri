@@ -889,54 +889,43 @@ DLL_PUBLIC std::string normalize(components uri)
     }
   }
 
-  /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  // I think we'll want to remove default port numbers.
-
-  enum class {
-    must_not_have,
-    may_have,
-    must_have,
-  } host;
+  //-----------------------------------------------------------------------------
 
   // https://url.spec.whatwg.org/#url-miscellaneous
 
   struct special_scheme {
     char const* scheme;
-    std::optional<uint16_t> port;
+    uint16_t port;
   };
 
+  // Very short list of scheme specific default port numbers.
+  // clang-format off
   special_scheme special[] = {
-    {"ftp",    21},
-    {"file",   {}},
-    {"gopher", 70},
-    {"http",   80},
-    {"https", 443},
-    {"ws",     80},
-    {"wss",   443},
+      {"ftp",    21},
+      {"gopher", 70},
+      {"http",   80},
+      {"https", 443},
+      {"ws",     80},
+      {"wss",   443},
   };
+  // clang-format on
 
   if (uri.port) {
-    std::optional<uint16_t> default_port;
     for (auto&& spc : special) {
       if (uri.scheme == spc.scheme) {
-        if (default_port == spc.port)
-          break;
+        auto p = strtoul(uri.port->c_str(), nullptr, 10);
+        if (p == spc.port) {
+          uri.port = {};
+        }
       }
     }
   }
 
-  // Obviously, this doesn't do anything yet.  Once we get into scheme
-  // specific validation there are a bunch of issues to deal with.
-  // Like the "file" scheme must not have a host.  Both "ws" and "wss"
-  // must have a host.  And this list from whatwg is very sparse.
+  // The whole list at:
+  // <https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml>
+  // has like 288 schemes to deal with, of which 95 are "Permanent."
 
-  The whole list at:
-  <https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml>
-  has like 288 schemes to deal with, of which 95 are "Permanent."
-
-  The whatwg list has gopher, but not news, mailto, or ssh.  Is that for real?
-
-  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+  //-----------------------------------------------------------------------------
 
   // Rebuild authority from user@host:port triple.
   std::stringstream authstream;
