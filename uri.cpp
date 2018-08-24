@@ -723,7 +723,7 @@ std::string merge(components const& base_parts, components const& ref_parts)
 
 // 5.2.4.  Remove Dot Segments
 
-std::string remove_dot_segments(std::string input)
+std::string remove_dot_segments(std::string_view input)
 {
   std::string output;
   output.reserve(input.length());
@@ -731,30 +731,27 @@ std::string remove_dot_segments(std::string input)
   while (!input.empty()) {
     // A.
     if (starts_with(input, "../")) {
-      input.erase(0, 3);
+      input.remove_prefix(3);
       continue;
     }
     if (starts_with(input, "./")) {
-      input.erase(0, 2);
+      input.remove_prefix(2);
       continue;
     }
 
     // B.
     if (starts_with(input, "/./")) {
-      input.erase(0, 3);
-      input.insert(0, "/");
+      input.remove_prefix(2);
       continue;
     }
     if (input == "/.") {
-      input.erase(0, 2);
-      input.insert(0, "/");
+      input = "/";
       continue;
     }
 
     // C.
     if (starts_with(input, "/../")) {
-      input.erase(0, 4);
-      input.insert(0, "/");
+      input.remove_prefix(3);
       // remove last segment from output
       auto last = output.rfind("/");
       if (last != std::string::npos) {
@@ -763,8 +760,7 @@ std::string remove_dot_segments(std::string input)
       continue;
     }
     if (input == "/..") {
-      input.erase(0, 3);
-      input.insert(0, "/");
+      input = "/";
       // remove last segment from output
       auto last = output.rfind("/");
       if (last != std::string::npos) {
@@ -775,11 +771,11 @@ std::string remove_dot_segments(std::string input)
 
     // D.
     if (input == ".") {
-      input.erase(0, 1);
+      input = "";
       continue;
     }
     if (input == "..") {
-      input.erase(0, 2);
+      input = "";
       continue;
     }
 
@@ -789,7 +785,7 @@ std::string remove_dot_segments(std::string input)
     if (tao::pegtl::parse<uri_internal::path_segment, uri_internal::action>(
             in, path_seg)) {
       output += path_seg;
-      input.erase(0, path_seg.length());
+      input.remove_prefix(path_seg.length());
     }
     else {
       LOG(FATAL) << "no match, we'll be looping forever";
