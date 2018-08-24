@@ -171,14 +171,21 @@ struct path_abempty  : star<seq<one<'/'>, segment>> {};
 // encode it.
 
 struct pct_let_dig   : seq<one<'%'>,
-                           sor<// ALPHA    x41 -> x5A
+                           sor<// ALPHA UC  x41 -> x5A
                                seq<one<'4'>, range<'1','9'>>,
                                seq<one<'4'>, range<'A','F'>>,
                                seq<one<'4'>, range<'a','f'>>,
                                seq<one<'5'>, range<'0','9'>>,
                                seq<one<'5'>, one<'A'>>,
                                seq<one<'5'>, one<'a'>>,
-                               // DIGIT    x30 -> x39
+                               // ALPHA LC  x61 -> x7A
+                               seq<one<'6'>, range<'1','9'>>,
+                               seq<one<'6'>, range<'A','F'>>,
+                               seq<one<'6'>, range<'a','f'>>,
+                               seq<one<'7'>, range<'0','9'>>,
+                               seq<one<'7'>, one<'A'>>,
+                               seq<one<'7'>, one<'a'>>,
+                               // DIGIT     x30 -> x39
                                seq<one<'3'>, range<'0','9'>>
                              >
                            > {};
