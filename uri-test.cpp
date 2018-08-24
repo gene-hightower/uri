@@ -442,13 +442,16 @@ int test_comparison()
 
   // clang-format off
   constexpr test_case tests[] = {
-    {"http://www.example.com/",        "http://www.example.com/"},
-    {"http://www.example.com/",        "http://www.example.com:80/"},
-    {"http://www.example.com/",        "http://www.example.com:0080/"},
-    {"http://www.example.com/",        "http://WWW.EXAMPLE.COM/"},
-    {"http://www.example.com/./path",  "http://www.example.com/path"},
-    {"http://www.example.com/1/../2/", "http://www.example.com/2/"},
-    {"example://a/b/c/%7Bfoo%7D",      "eXAMPLE://a/./b/../b/%63/%7bfoo%7d"},
+    {"http://www.example.com/",            "http://www.example.com/"},
+    {"http://www.example.com/p?q",         "http://www.example.com/p?q"},
+    {"http://www.example.com/p?q#f",       "http://www.example.com/p?q#f"},
+    {"http://www.example.com:80/",         "http://www.example.com/"},
+    {"http://www.example.com:0080/",       "http://www.example.com/"},
+    {"http://WWW.EXAMPLE.COM/",            "http://www.example.com/"},
+    {"http://www.example.com/./path",      "http://www.example.com/path"},
+    {"http://www.example.com/1/../2/",     "http://www.example.com/2/"},
+    {"example://a/b/c/%7Bfoo%7D",          "example://a/b/c/%7Bfoo%7D"},
+    {"eXAMPLE://a/./b/../b/%63/%7bfoo%7d", "example://a/b/c/%7Bfoo%7D"},
   };
   // clang-format on
 
@@ -457,6 +460,11 @@ int test_comparison()
     uri::generic rhs{test.rhs, true};
     if (lhs != rhs) {
       LOG(ERROR) << lhs << " != " << rhs;
+      ++failures;
+    }
+    if (uri::to_string(lhs) != test.rhs) {
+      LOG(ERROR) << uri::to_string(lhs) << " != " << test.rhs;
+      LOG(ERROR) << lhs << " != " << test.rhs;
       ++failures;
     }
   }

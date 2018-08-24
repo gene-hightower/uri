@@ -533,6 +533,7 @@ generic::generic(std::string uri_in, bool norm)
   }
   if (norm) {
     uri_ = normalize(parts_);
+    parts_ = components{};
     CHECK(parse_generic(uri_, parts_));
     form_ = form::normalized;
   }
@@ -552,6 +553,7 @@ absolute::absolute(std::string uri_in, bool norm)
   }
   if (norm) {
     uri_ = normalize(parts_);
+    parts_ = components{};
     CHECK(parse_absolute(uri_, parts_));
     form_ = form::normalized;
   }
@@ -571,6 +573,7 @@ reference::reference(std::string uri_in, bool norm)
   }
   if (norm) {
     uri_ = normalize(parts_);
+    parts_ = components{};
     CHECK(parse_reference(uri_, parts_));
     form_ = form::normalized;
   }
@@ -955,7 +958,7 @@ DLL_PUBLIC std::string normalize(components uri)
   }
 
   if (uri.fragment) {
-    uri.query = normalize_pct_encoded(*uri.fragment);
+    uri.fragment = normalize_pct_encoded(*uri.fragment);
   }
 
   return to_string(uri);
@@ -1071,7 +1074,7 @@ DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
       os << *uri.host;
 
     if (uri.port)
-      os << ':' << *uri.userinfo;
+      os << ':' << *uri.port;
   }
   else if (uri.authority) {
     os << "//" << *uri.authority;
