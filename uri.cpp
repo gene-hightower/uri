@@ -901,30 +901,48 @@ DLL_PUBLIC std::string normalize(components uri)
 
   struct special_scheme {
     char const* scheme;
-    uint16_t port;
+    char const* default_path;
+    uint16_t default_port;
   };
 
   // Very short list of scheme specific default port numbers.
   // clang-format off
   special_scheme special[] = {
-      {"ftp",    21},
-      {"gopher", 70},
-      {"http",   80},
-      {"https", 443},
-      {"ws",     80},
-      {"wss",   443},
+      {"ftp",    "",  21},
+      {"gopher", "",  70},
+      {"http",  "/",  80},
+      {"https", "/", 443},
+      {"ws",     "",  80},
+      {"wss",    "", 443},
   };
   // clang-format on
 
-  if (uri.port) {
-    for (auto&& spc : special) {
-      if (uri.scheme == spc.scheme) {
-        auto p = strtoul(uri.port->c_str(), nullptr, 10);
-        if (p == spc.port) {
+  for (auto&& spc : special) {
+    if (uri.scheme == spc.scheme) {
+      if (uri.port && !uri.port->empty()) {
+        auto p = strtoul(uri.port->data(), nullptr, 10);
+        if (p == spc.default_port) {
           uri.port = {};
         }
       }
+      if (uri.port && uri.port->empty()) {
+        uri.port = {};
+      }
+
+      if (uri.path && uri.path->empty()) {
+        uri.path = spc.default_path;
+      }
+
+      break;
     }
+  }
+
+  // remove leading zeros
+  std::string port;
+  if (uri.port && !uri.port->empty()) {
+    auto p = strtoul(uri.port->data(), nullptr, 10);
+    port = fmt::format("{}", p);
+    uri.port = port;
   }
 
   // The whole list at:

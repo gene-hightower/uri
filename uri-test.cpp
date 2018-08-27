@@ -442,22 +442,34 @@ int test_comparison()
 
   // clang-format off
   constexpr test_case tests[] = {
+    // basic parts
     {"http://www.example.com/",            "http://www.example.com/"},
+    {"http://www.example.com/p",           "http://www.example.com/p"},
     {"http://www.example.com/p?q",         "http://www.example.com/p?q"},
     {"http://www.example.com/p?q#f",       "http://www.example.com/p?q#f"},
-    {"http://www.example.com:80/",         "http://www.example.com/"},
-    {"http://www.example.com:0080/",       "http://www.example.com/"},
-    {"http://WWW.EXAMPLE.COM/",            "http://www.example.com/"},
-    {"http://www.example.com/./path",      "http://www.example.com/path"},
-    {"http://www.example.com/1/../2/",     "http://www.example.com/2/"},
-    {"example://a/b/c/%7Bfoo%7D",          "example://a/b/c/%7Bfoo%7D"},
+
+    // 6.2.2.  Syntax-Based Normalization
     {"eXAMPLE://a/./b/../b/%63/%7bfoo%7d", "example://a/b/c/%7Bfoo%7D"},
+    {"example://a/b/c/%7Bfoo%7D",          "example://a/b/c/%7Bfoo%7D"},
+
+    // 6.2.3.  Scheme-Based Normalization
+    {"http://www.example.com",             "http://www.example.com/"},
+    {"http://www.example.com/",            "http://www.example.com/"},
+    {"http://www.example.com:/",           "http://www.example.com/"},
+    {"http://www.example.com:80/",         "http://www.example.com/"},
+
+    // leading zeros
+    {"http://www.example.com:0080/",       "http://www.example.com/"},
+    {"http://www.example.com:0090/",       "http://www.example.com:90/"},
+
+    // Unicode / 
+    {"https://xn--g6h.digilicious.com/♥",  "https://♥.digilicious.com/♥"},
   };
   // clang-format on
 
   for (auto&& test : tests) {
-    uri::generic lhs{test.lhs, true};
-    uri::generic rhs{test.rhs, true};
+    uri::generic lhs{test.lhs, true}; // with normalization
+    uri::generic rhs{test.rhs, true}; // with normalization
     if (lhs != rhs) {
       LOG(ERROR) << lhs << " != " << rhs;
       ++failures;
@@ -583,6 +595,8 @@ int main(int argc, char* argv[])
       std::cout << "\n    },  \n  },\n";
     }
   }
+
+  std::cout << "sizeof(uri::absolute) == " << sizeof(uri::absolute) << '\n';
 
   if (failures)
     LOG(FATAL) << "one or more tests failed";
