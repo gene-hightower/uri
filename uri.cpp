@@ -348,9 +348,9 @@ template <> struct action<scheme_colon> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    auto sc = in.string();
+    auto sc = std::string_view(begin(in), size(in));
     CHECK((size(sc) >= 1) && (sc.back() == ':'));
-    sc.pop_back();
+    sc.remove_suffix(1);
     parts.scheme = sc;
   }
 };
@@ -359,7 +359,7 @@ template <> struct action<authority> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.authority = in.string();
+    parts.authority = std::string_view(begin(in), size(in));
   }
 };
 
@@ -367,7 +367,7 @@ template <> struct action<path_abempty> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.path = in.string();
+    parts.path = std::string_view(begin(in), size(in));
   }
 };
 
@@ -383,7 +383,7 @@ template <> struct action<path_absolute> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.path = in.string();
+    parts.path = std::string_view(begin(in), size(in));
   }
 };
 
@@ -391,7 +391,7 @@ template <> struct action<path_rootless> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.path = in.string();
+    parts.path = std::string_view(begin(in), size(in));
   }
 };
 
@@ -399,7 +399,7 @@ template <> struct action<path_noscheme> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.path = in.string();
+    parts.path = std::string_view(begin(in), size(in));
   }
 };
 
@@ -407,7 +407,7 @@ template <> struct action<query> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.query = in.string();
+    parts.query = std::string_view(begin(in), size(in));
   }
 };
 
@@ -415,7 +415,7 @@ template <> struct action<fragment> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.fragment = in.string();
+    parts.fragment = std::string_view(begin(in), size(in));
   }
 };
 
@@ -425,9 +425,9 @@ template <> struct action<userinfo_at> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    auto ui = in.string();
+    auto ui = std::string_view(begin(in), size(in));
     CHECK((size(ui) >= 1) && (ui.back() == '@'));
-    ui.pop_back();
+    ui.remove_suffix(1);
     parts.userinfo = ui;
   }
 };
@@ -436,7 +436,7 @@ template <> struct action<host> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.host = in.string();
+    parts.host = std::string_view(begin(in), size(in));
   }
 };
 
@@ -444,7 +444,7 @@ template <> struct action<port> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
-    parts.port = in.string();
+    parts.port = std::string_view(begin(in), size(in));
   }
 };
 
@@ -452,7 +452,7 @@ template <> struct action<path_segment> {
   template <typename Input>
   static void apply(Input const& in, std::string& path_seg)
   {
-    path_seg = in.string();
+    path_seg = std::string_view(begin(in), size(in));
   }
 };
 } // namespace uri_internal
@@ -505,6 +505,176 @@ std::string to_string(components const& uri)
   std::ostringstream os;
   os << uri;
   return os.str();
+}
+
+namespace {
+
+template <typename CharT> bool is_small(std::basic_string<CharT> const& str)
+{
+  auto const b = reinterpret_cast<CharT const*>(&str);
+  auto const e = reinterpret_cast<CharT const*>(&str + 1);
+  auto const d = str.data();
+  return (b <= d) && (d <= e);
+}
+
+// Rebase an optional string_view from one (small) string to another.
+
+// The from_str may be trashed by being moved from.
+
+template <typename CharT>
+std::optional<std::basic_string_view<CharT>>
+move_view(std::basic_string<CharT> const& from_str,
+          std::basic_string<CharT> const& to_str,
+          std::optional<std::string_view> const& view)
+{
+  if (!view)
+    return {};
+
+  CHECK(is_small(from_str));
+  CHECK(is_small(to_str));
+
+  auto const from_b = reinterpret_cast<CharT const*>(&from_str);
+  auto const from_e = reinterpret_cast<CharT const*>(&from_str + 1);
+
+  auto const d = view->data();
+  auto const s = view->size();
+
+  CHECK((from_b <= d) && (d <= from_e));
+  CHECK((from_b <= (d + s)) && ((d + s) <= from_e));
+
+  auto const to_b = reinterpret_cast<CharT const*>(&to_str);
+  auto const to_e = reinterpret_cast<CharT const*>(&to_str + 1);
+
+  auto const offset = d - from_b;
+
+  auto const new_view = std::string_view{to_b + offset, s};
+
+  auto const new_d = new_view.data();
+
+  CHECK((to_b <= new_d) && (new_d <= to_e));
+  CHECK((to_b <= (new_d + s)) && ((new_d + s) <= to_e));
+
+  return new_view;
+}
+
+template <typename CharT>
+components move_components(std::basic_string<CharT> const& from_str,
+                           std::basic_string<CharT> const& to_str,
+                           components const& from_parts)
+{
+  components parts;
+
+  // clang-format off
+  parts.scheme    = move_view(from_str, to_str, from_parts.scheme);
+  parts.authority = move_view(from_str, to_str, from_parts.authority);
+  parts.userinfo  = move_view(from_str, to_str, from_parts.userinfo);
+  parts.host      = move_view(from_str, to_str, from_parts.host);
+  parts.port      = move_view(from_str, to_str, from_parts.port);
+  parts.path      = move_view(from_str, to_str, from_parts.path);
+  parts.query     = move_view(from_str, to_str, from_parts.query);
+  parts.fragment  = move_view(from_str, to_str, from_parts.fragment);
+  // clang-format on
+
+  return parts;
+}
+
+// Rebase an optional string_view from one string to another.  Both
+// from_str and to_str must be valid.
+
+template <typename CharT>
+std::optional<std::basic_string_view<CharT>>
+copy_view(std::basic_string<CharT> const& from_str,
+          std::basic_string<CharT> const& to_str,
+          std::optional<std::string_view> const& view)
+{
+  if (!view)
+    return {};
+
+  auto const from_b = from_str.data();
+  auto const from_e = from_str.data() + from_str.length();
+
+  auto const d = view->data();
+  auto const s = view->size();
+
+  CHECK((from_b <= d) && (d <= from_e));
+  CHECK((from_b <= (d + s)) && ((d + s) <= from_e));
+
+  auto const to_b = to_str.data();
+  auto const to_e = to_str.data() + to_str.length();
+
+  auto const offset = d - from_b;
+
+  auto const new_view = std::string_view{to_b + offset, s};
+
+  auto const new_d = new_view.data();
+
+  CHECK((to_b <= new_d) && (new_d <= to_e));
+  CHECK((to_b <= (new_d + s)) && ((new_d + s) <= to_e));
+
+  return new_view;
+}
+
+template <typename CharT>
+components copy_components(std::basic_string<CharT> const& from_str,
+                           std::basic_string<CharT> const& to_str,
+                           components const& from_parts)
+{
+  components parts;
+
+  // clang-format off
+  parts.scheme    = copy_view(from_str, to_str, from_parts.scheme);
+  parts.authority = copy_view(from_str, to_str, from_parts.authority);
+  parts.userinfo  = copy_view(from_str, to_str, from_parts.userinfo);
+  parts.host      = copy_view(from_str, to_str, from_parts.host);
+  parts.port      = copy_view(from_str, to_str, from_parts.port);
+  parts.path      = copy_view(from_str, to_str, from_parts.path);
+  parts.query     = copy_view(from_str, to_str, from_parts.query);
+  parts.fragment  = copy_view(from_str, to_str, from_parts.fragment);
+  // clang-format on
+
+  return parts;
+}
+
+} // namespace
+
+uri::uri(uri const& other) // copy ctor()
+{
+  uri_ = other.uri_;
+  form_ = other.form_;
+  parts_ = copy_components(other.uri_, uri_, other.parts_);
+}
+
+uri& uri::operator=(uri const& other) // copy assignment
+{
+  uri_ = other.uri_;
+  form_ = other.form_;
+  parts_ = copy_components(other.uri_, uri_, other.parts_);
+  return *this;
+}
+
+uri::uri(uri&& other) // move ctor()
+{
+  uri_ = std::move(other.uri_);
+  form_ = other.form_;
+  if (is_small(uri_)) {
+    parts_ = move_components(other.uri_, uri_, other.parts_);
+  }
+  else {
+    parts_ = other.parts_;
+  }
+}
+
+uri& uri::operator=(uri&& other) // move assignment
+{
+  uri_ = std::move(other.uri_);
+  form_ = other.form_;
+  if (is_small(uri_)) {
+    parts_ = move_components(other.uri_, uri_, other.parts_);
+  }
+  else {
+    parts_ = other.parts_;
+  }
+  return *this;
 }
 
 bool uri::operator<(uri const& rhs) const
@@ -586,10 +756,10 @@ reference::reference(components const& uri_in, bool norm)
 }
 
 namespace {
-// clang-format off
 
 bool constexpr isunreserved(unsigned char in)
 {
+  // clang-format off
   switch (in) {
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
@@ -609,10 +779,12 @@ bool constexpr isunreserved(unsigned char in)
       break;
   }
   return false;
+  // clang-format on
 }
 
 bool constexpr ishexdigit(unsigned char in)
 {
+  // clang-format off
   switch (in) {
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
@@ -625,10 +797,12 @@ bool constexpr ishexdigit(unsigned char in)
       break;
   }
   return false;
+  // clang-format on
 }
 
 unsigned char constexpr hexdigit2bin(unsigned char in)
 {
+  // clang-format off
   switch (in) {
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
@@ -638,11 +812,11 @@ unsigned char constexpr hexdigit2bin(unsigned char in)
       return 10 + (in - 'a');
     case 'A': case 'B': case 'C': case 'D': case 'E':
     case 'F':
-      break;
+      return 10 + (in - 'A');
   }
-  return 10 + (in - 'A');
+  return 0;
+  // clang-format on
 }
-// clang-format on
 
 std::string normalize_pct_encoded(std::string_view string)
 {
@@ -684,6 +858,11 @@ bool ends_with(std::string_view str, std::string_view suffix)
   return false;
 }
 
+std::string view_to_string(std::string_view view)
+{
+  return std::string(view.data(), view.length());
+}
+
 std::string all_but_the_last(std::string_view path)
 {
   // …
@@ -713,13 +892,13 @@ std::string merge(components const& base_parts, components const& ref_parts)
 
   if ((base_parts.authority && base_parts.path->empty())
       || ends_with(*base_parts.path, "/..")) {
-    return "/" + *ref_parts.path;
+    return "/" + view_to_string(*ref_parts.path);
   }
 
   // o  return a string consisting of the reference's path component
   //    appended to all but the last segment of the base URI's path…
 
-  return all_but_the_last(*base_parts.path) + *ref_parts.path;
+  return all_but_the_last(*base_parts.path) + view_to_string(*ref_parts.path);
 }
 
 // <https://tools.ietf.org/html/rfc3986#section-5.2.4>
@@ -882,16 +1061,29 @@ std::string normalize_host(std::string_view host)
 
 DLL_PUBLIC std::string normalize(components uri)
 {
+  std::string scheme;
+  std::string authority;
+  std::string userinfo;
+  std::string host;
+  std::string port;
+  std::string path;
+  std::string query;
+  std::string fragment;
+
   // Normalize the scheme.
   if (uri.scheme) {
-    std::transform(begin(*uri.scheme), end(*uri.scheme), begin(*uri.scheme),
+    scheme.reserve(uri.scheme->size());
+    std::transform(begin(*uri.scheme), end(*uri.scheme),
+                   std::back_inserter(scheme),
                    [](unsigned char c) { return std::tolower(c); });
+    uri.scheme = scheme;
   }
 
   // Normalize the host name.
   if (uri.host) {
     if (!(is_IPv4address(*uri.host) || is_IP_literal(*uri.host))) {
-      uri.host = normalize_host(*uri.host);
+      host = normalize_host(*uri.host);
+      uri.host = host;
     }
   }
 
@@ -938,7 +1130,6 @@ DLL_PUBLIC std::string normalize(components uri)
   }
 
   // remove leading zeros
-  std::string port;
   if (uri.port && !uri.port->empty()) {
     auto p = strtoul(uri.port->data(), nullptr, 10);
     port = fmt::format("{}", p);
@@ -963,20 +1154,24 @@ DLL_PUBLIC std::string normalize(components uri)
     authstream << ':' << *uri.port;
 
   if (uri.userinfo || uri.host || uri.port) {
-    uri.authority = authstream.str();
+    authority = authstream.str();
+    uri.authority = authority;
   }
 
   // Normalize the path.
   if (uri.path) {
-    uri.path = remove_dot_segments(normalize_pct_encoded(*uri.path));
+    path = remove_dot_segments(normalize_pct_encoded(*uri.path));
+    uri.path = path;
   }
 
   if (uri.query) {
-    uri.query = normalize_pct_encoded(*uri.query);
+    query = normalize_pct_encoded(*uri.query);
+    uri.query = query;
   }
 
   if (uri.fragment) {
-    uri.fragment = normalize_pct_encoded(*uri.fragment);
+    fragment = normalize_pct_encoded(*uri.fragment);
+    uri.fragment = fragment;
   }
 
   return to_string(uri);
@@ -984,6 +1179,8 @@ DLL_PUBLIC std::string normalize(components uri)
 
 DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
 {
+  std::string path;
+
   // 5.2.  Relative Resolution
 
   if (ref.empty()) {
@@ -1008,7 +1205,8 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
     }
 
     if (ref_parts.path) {
-      target_parts.path = remove_dot_segments(*ref_parts.path);
+      path = remove_dot_segments(*ref_parts.path);
+      target_parts.path = path;
     }
 
     if (ref_parts.query) {
@@ -1019,7 +1217,8 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
     if (ref_parts.authority) {
       target_parts.authority = *ref_parts.authority;
       if (ref_parts.path) {
-        target_parts.path = remove_dot_segments(*ref_parts.path);
+        path = remove_dot_segments(*ref_parts.path);
+        target_parts.path = path;
       }
       target_parts.query = ref_parts.query;
     }
@@ -1037,13 +1236,15 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
       else {
         if (starts_with(*ref_parts.path, "/")) {
           if (ref_parts.path) {
-            target_parts.path = remove_dot_segments(*ref_parts.path);
+            path = remove_dot_segments(*ref_parts.path);
+            target_parts.path = path;
           }
         }
         else {
           // T.path = merge(Base.path, R.path);
           // T.path = remove_dot_segments(T.path);
-          target_parts.path = remove_dot_segments(merge(base_parts, ref_parts));
+          path = remove_dot_segments(merge(base_parts, ref_parts));
+          target_parts.path = path;
         }
 
         // T.query = R.query;

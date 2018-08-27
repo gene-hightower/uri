@@ -27,14 +27,14 @@ public:
 const std::error_category& category();
 
 struct components {
-  std::optional<std::string> scheme;
-  std::optional<std::string> authority; // further brokwn down into:
-  std::optional<std::string> userinfo;  //  from authority
-  std::optional<std::string> host;      //  from authority
-  std::optional<std::string> port;      //  from authority
-  std::optional<std::string> path;
-  std::optional<std::string> query;
-  std::optional<std::string> fragment;
+  std::optional<std::string_view> scheme;
+  std::optional<std::string_view> authority; // further brokwn down into:
+  std::optional<std::string_view> userinfo;  //  from authority
+  std::optional<std::string_view> host;      //  from authority
+  std::optional<std::string_view> port;      //  from authority
+  std::optional<std::string_view> path;
+  std::optional<std::string_view> query;
+  std::optional<std::string_view> fragment;
 };
 
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& comp);
@@ -53,15 +53,25 @@ enum class form : bool {
 
 class uri : boost::operators<uri> {
 public:
+  uri() {}
+
+  // copy
+  uri(uri const&);
+  uri& operator=(uri const&);
+
+  // move
+  uri(uri&&);
+  uri& operator=(uri&&);
+
   // clang-format off
-  auto const& scheme()    const { return parts_.scheme; }
-  auto const& authority() const { return parts_.authority; }
-  auto const& userinfo()  const { return parts_.userinfo; }
-  auto const& host()      const { return parts_.host; }
-  auto const& port()      const { return parts_.port; }
-  auto const& path()      const { return parts_.path; }
-  auto const& query()     const { return parts_.query; }
-  auto const& fragment()  const { return parts_.fragment; }
+  auto scheme()    const { return parts_.scheme; }
+  auto authority() const { return parts_.authority; }
+  auto userinfo()  const { return parts_.userinfo; }
+  auto host()      const { return parts_.host; }
+  auto port()      const { return parts_.port; }
+  auto path()      const { return parts_.path; }
+  auto query()     const { return parts_.query; }
+  auto fragment()  const { return parts_.fragment; }
   // clang-format on
 
   components const& parts() const { return parts_; }
@@ -75,9 +85,11 @@ public:
 
 protected:
   std::string uri_;
-  components parts_;
+  components parts_; // All the string_views in parts_ point into uri_.
   form form_{form::unnormalized};
 };
+
+// Derived types add only ctor()s that use different parsers.
 
 class generic : public uri {
 public:
