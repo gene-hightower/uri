@@ -679,7 +679,6 @@ bool uri::operator<(uri const& rhs) const
 {
   if (form_ != rhs.form_) {
     LOG(FATAL) << "forms don't match for these URIs: " << *this << " " << rhs;
-    throw syntax_error();
   }
   return uri_ < rhs.uri_;
 }
@@ -688,7 +687,6 @@ bool uri::operator==(uri const& rhs) const
 {
   if (form_ != rhs.form_) {
     LOG(FATAL) << "forms don't match for these URIs: " << *this << " " << rhs;
-    throw syntax_error();
   }
   return uri_ == rhs.uri_;
 }
@@ -975,8 +973,6 @@ std::string remove_dot_segments(std::string_view input)
   return output;
 }
 
-size_t constexpr max_length = 255;
-
 std::string_view remove_trailing_dot(std::string_view a)
 {
   if (a.length() && ('.' == a.back())) {
@@ -988,15 +984,17 @@ std::string_view remove_trailing_dot(std::string_view a)
 // Normalization Form KC (NFKC) Compatibility Decomposition, followed
 // by Canonical Composition, see <http://unicode.org/reports/tr15/>
 
+size_t constexpr max_length = 255;
+
 std::string nfkc(std::string_view str)
 {
-  size_t length = max_length;
-  char bfr[max_length];
   if (str.length() > max_length) {
     throw std::runtime_error("hostname too long");
   }
-  auto udata = reinterpret_cast<uint8_t const*>(str.data());
-  auto ubfr = reinterpret_cast<uint8_t*>(bfr);
+  size_t length = max_length;
+  char bfr[max_length];
+  auto const udata = reinterpret_cast<uint8_t const*>(str.data());
+  auto const ubfr = reinterpret_cast<uint8_t*>(bfr);
   if (u8_normalize(UNINORM_NFKC, udata, str.size(), ubfr, &length) == nullptr) {
     throw std::runtime_error("u8_normalize failure");
   }
