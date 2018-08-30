@@ -77,7 +77,7 @@ public:
   components const& parts() const { return parts_; }
 
   std::string const& string() const { return uri_; }
-  std::string_view string_view() const { string(); }
+  std::string_view string_view() const { return string(); }
 
   bool empty() const { return string_view().empty(); }
 
