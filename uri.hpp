@@ -28,7 +28,7 @@ const std::error_category& category();
 
 struct components {
   std::optional<std::string_view> scheme;
-  std::optional<std::string_view> authority; // further brokwn down into:
+  std::optional<std::string_view> authority; // further broken down into:
   std::optional<std::string_view> userinfo;  //  from authority
   std::optional<std::string_view> host;      //  from authority
   std::optional<std::string_view> port;      //  from authority
@@ -76,9 +76,10 @@ public:
 
   components const& parts() const { return parts_; }
 
-  std::string_view string() const { return uri_; }
+  std::string_view string_view() const { return uri_; }
+  std::string const& string() const { return uri_; }
 
-  bool empty() const { return string().empty(); }
+  bool empty() const { return string_view().empty(); }
 
   bool operator<(uri const& rhs) const;
   bool operator==(uri const& rhs) const;
@@ -108,8 +109,6 @@ public:
   reference(std::string uri_in, bool norm = false);
   reference(components const& uri_in, bool norm = false);
 };
-
-DLL_PUBLIC std::string to_string(uri const&);
 
 DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref);
 

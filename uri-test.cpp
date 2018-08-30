@@ -417,8 +417,8 @@ int test_resolution()
   for (auto&& test : tests) {
     uri::reference ref(test.ref);
     auto resolved = uri::resolve_ref(base, ref);
-    auto resolved_str = uri::to_string(resolved);
-    if (resolved_str != test.resolved) {
+    auto resolved_sv = resolved.string_view();
+    if (resolved_sv != test.resolved) {
       LOG(ERROR) << "##### Failure #####";
       LOG(ERROR) << "for input == " << test.ref << '\n';
       LOG(ERROR) << "ref == " << ref;
@@ -474,8 +474,8 @@ int test_comparison()
       LOG(ERROR) << lhs << " != " << rhs;
       ++failures;
     }
-    if (uri::to_string(lhs) != test.rhs) {
-      LOG(ERROR) << uri::to_string(lhs) << " != " << test.rhs;
+    if (lhs.string_view() != test.rhs) {
+      LOG(ERROR) << lhs.string_view() << " != " << test.rhs;
       LOG(ERROR) << lhs << " != " << test.rhs;
       ++failures;
     }
@@ -504,10 +504,13 @@ int main(int argc, char* argv[])
   failures += test_resolution();
 
   {
-    // the two explicit tests from RFC 3986:
+    // 5.2.4.  Remove Dot Segments
     uri::components parts;
+
+    // The two explicit tests from RFC 3986, page 34:
     parts.path = "/a/b/c/./../../g";
     CHECK_EQ(uri::normalize(parts), "/a/g");
+
     parts.path = "mid/content=5/../6";
     CHECK_EQ(uri::normalize(parts), "mid/6");
   }
@@ -519,7 +522,7 @@ int main(int argc, char* argv[])
 
     if (!FLAGS_base.empty()) {
       uri::absolute base(FLAGS_base);
-      u = uri::reference(uri::to_string(uri::resolve_ref(base, u)));
+      u = uri::reference(uri::resolve_ref(base, u).string());
     }
 
     if (FLAGS_normalize) {

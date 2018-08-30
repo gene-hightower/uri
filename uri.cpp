@@ -498,8 +498,6 @@ DLL_PUBLIC bool parse_absolute(std::string_view uri, components& parts)
   return false;
 }
 
-std::string to_string(uri const& uri_in) { return to_string(uri_in.parts()); }
-
 std::string to_string(components const& uri)
 {
   std::ostringstream os;
