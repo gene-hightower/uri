@@ -693,6 +693,7 @@ bool uri::operator==(uri const& rhs) const
 
 generic::generic(std::string uri_in, bool norm)
 {
+  static_assert(sizeof(generic) == sizeof(uri));
   uri_ = uri_in;
   if (!parse_generic(uri_, parts_)) {
     throw syntax_error();
@@ -708,11 +709,13 @@ generic::generic(std::string uri_in, bool norm)
 generic::generic(components const& uri_in, bool norm)
   : generic(norm ? normalize(uri_in) : to_string(uri_in), false)
 {
+  static_assert(sizeof(generic) == sizeof(uri));
   form_ = norm ? form::normalized : form::unnormalized;
 }
 
 absolute::absolute(std::string uri_in, bool norm)
 {
+  static_assert(sizeof(absolute) == sizeof(uri));
   uri_ = uri_in;
   if (!parse_absolute(uri_, parts_)) {
     throw syntax_error();
@@ -728,11 +731,13 @@ absolute::absolute(std::string uri_in, bool norm)
 absolute::absolute(components const& uri_in, bool norm)
   : absolute(norm ? normalize(uri_in) : to_string(uri_in), false)
 {
+  static_assert(sizeof(absolute) == sizeof(uri));
   form_ = norm ? form::normalized : form::unnormalized;
 }
 
 reference::reference(std::string uri_in, bool norm)
 {
+  static_assert(sizeof(reference) == sizeof(uri));
   uri_ = uri_in;
   if (!parse_reference(uri_, parts_)) {
     throw syntax_error();
@@ -748,6 +753,7 @@ reference::reference(std::string uri_in, bool norm)
 reference::reference(components const& uri_in, bool norm)
   : reference(norm ? normalize(uri_in) : to_string(uri_in), false)
 {
+  static_assert(sizeof(reference) == sizeof(uri));
   form_ = norm ? form::normalized : form::unnormalized;
 }
 
