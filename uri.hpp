@@ -55,6 +55,9 @@ class uri : boost::operators<uri> {
 public:
   uri() {}
 
+  // Base classes add nothing but new ctors(), so skip the vtable.
+  // virtual ~uri() {}
+
   // copy
   uri(uri const&);
   uri& operator=(uri const&);
