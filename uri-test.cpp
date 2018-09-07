@@ -484,6 +484,54 @@ int test_comparison()
   return failures;
 }
 
+namespace {
+
+template <typename CharT> bool is_small(std::basic_string<CharT> const& str)
+{
+  auto const b = reinterpret_cast<CharT const*>(&str);
+  auto const e = reinterpret_cast<CharT const*>(&str + 1);
+  auto const d = str.data();
+  return (b <= d) && (d <= e);
+}
+
+} // namespace
+
+int test_ctors()
+{
+  auto failures = 0;
+
+  uri::generic uri_small("s://a/b");
+  if (!is_small(uri_small.string())) {
+    LOG(WARNING) << "uri_small is tall";
+    ++failures;
+  }
+
+  uri::generic uri_tall("http://"
+                        "user@very.very.very.very.very.very.very.very.very."
+                        "very.very.very.long.example.com:22222/"
+                        "very/very/very/very/very/very/very/very/very/very/"
+                        "path;parap?query#fragment");
+  if (is_small(uri_tall.string())) {
+    LOG(WARNING) << "uri_tall is small";
+    ++failures;
+  }
+
+  auto uri_small_copy(uri_small);
+  auto uri_tall_copy(uri_tall);
+
+  if (uri_small != uri_small_copy) {
+    LOG(WARNING) << "uri_small is equal to uri_small_copy";
+    ++failures;
+  }
+
+  if (uri_tall != uri_tall_copy) {
+    LOG(WARNING) << "uri_tall is equal to uri_tall_copy";
+    ++failures;
+  }
+
+  return failures;
+}
+
 DEFINE_string(base, "", "base URI");
 DEFINE_bool(testcase, false, "print a test case for each URI");
 DEFINE_bool(normalize, true, "normalize each URI");
@@ -502,6 +550,7 @@ int main(int argc, char* argv[])
   failures += test_good();
   failures += test_bad();
   failures += test_resolution();
+  failures += test_ctors();
 
   {
     // 5.2.4.  Remove Dot Segments
