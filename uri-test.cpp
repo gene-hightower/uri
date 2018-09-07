@@ -510,7 +510,7 @@ int test_ctors()
                         "user@very.very.very.very.very.very.very.very.very."
                         "very.very.very.long.example.com:22222/"
                         "very/very/very/very/very/very/very/very/very/very/"
-                        "path;parap?query#fragment");
+                        "long/path;parap?query#fragment");
   if (is_small(uri_tall.string())) {
     LOG(WARNING) << "uri_tall is small";
     ++failures;
