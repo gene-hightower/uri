@@ -13,11 +13,32 @@
 #include <boost/algorithm/string/split.hpp>
 
 #include <tao/pegtl.hpp>
-#include <tao/pegtl/contrib/abnf.hpp>
-// #include <tao/pegtl/contrib/tracer.hpp>
 
-using namespace tao::pegtl;
-using namespace tao::pegtl::abnf;
+using tao::pegtl::any;
+using tao::pegtl::eof;
+using tao::pegtl::list_tail;
+using tao::pegtl::memory_input;
+using tao::pegtl::not_at;
+using tao::pegtl::nothing;
+using tao::pegtl::one;
+using tao::pegtl::opt;
+using tao::pegtl::plus;
+using tao::pegtl::range;
+using tao::pegtl::rep;
+using tao::pegtl::rep_min_max;
+using tao::pegtl::rep_opt;
+using tao::pegtl::seq;
+using tao::pegtl::sor;
+using tao::pegtl::star;
+using tao::pegtl::string;
+using tao::pegtl::success;
+using tao::pegtl::two;
+
+#include <tao/pegtl/contrib/abnf.hpp>
+
+using tao::pegtl::abnf::ALPHA;
+using tao::pegtl::abnf::DIGIT;
+using tao::pegtl::abnf::HEXDIG;
 
 #include <glog/logging.h>
 
