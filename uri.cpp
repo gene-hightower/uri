@@ -289,7 +289,9 @@ struct ZoneID        : plus<sor<unreserved, pct_encoded>> {};
 struct IPv6addrz     : seq<IPv6address, one<'%'>, ZoneID> {};
 
 //     IP-literal    = "[" ( IPv6address / IPv6addrz / IPvFuture  ) "]"
-struct IP_literal    :  seq<one<'['>, sor<IPv6addrz, IPv6address, IPvFuture>, one<']'>> {};
+//     or maybe just:
+//     IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
+struct IP_literal    :  seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
 
 struct IP_literal_eof: seq<IP_literal, eof> {};
 
