@@ -27,14 +27,14 @@ public:
 const std::error_category& category();
 
 struct components {
-  std::optional<std::string_view> scheme;
-  std::optional<std::string_view> authority; // further broken down into:
-  std::optional<std::string_view> userinfo;  //  from authority
-  std::optional<std::string_view> host;      //  from authority
-  std::optional<std::string_view> port;      //  from authority
-  std::optional<std::string_view> path;
-  std::optional<std::string_view> query;
-  std::optional<std::string_view> fragment;
+  std::optional<std::string> scheme;
+  std::optional<std::string> authority; // further broken down into:
+  std::optional<std::string> userinfo;  //  from authority
+  std::optional<std::string> host;      //  from authority
+  std::optional<std::string> port;      //  from authority
+  std::optional<std::string> path;
+  std::optional<std::string> query;
+  std::optional<std::string> fragment;
 };
 
 DLL_PUBLIC bool parse_generic(std::string_view uri, components& comp);
@@ -53,18 +53,7 @@ enum class form : bool {
 
 class uri : boost::operators<uri> {
 public:
-  uri() {}
-
-  // Base classes add nothing but new ctors(), so skip the vtable.
-  // virtual ~uri() {}
-
-  // copy
-  uri(uri const&);
-  uri& operator=(uri const&);
-
-  // move
-  uri(uri&&);
-  uri& operator=(uri&&);
+  virtual ~uri() {} // I don't have to say noexcept, right?
 
   // clang-format off
   auto scheme()    const { return parts_.scheme; }
@@ -77,12 +66,13 @@ public:
   auto fragment()  const { return parts_.fragment; }
   // clang-format on
 
-  components const& parts() const { return parts_; }
+  components const& parts() const& { return parts_; }
+  components parts() && { return parts_; }
 
-  std::string const& string() const { return uri_; }
-  std::string_view string_view() const { return string(); }
+  std::string const& string() const& { return uri_; }
+  std::string string() && { return uri_; }
 
-  bool empty() const { return string_view().empty(); }
+  bool empty() const { return uri_.empty(); }
 
   bool operator<(uri const& rhs) const;
   bool operator==(uri const& rhs) const;

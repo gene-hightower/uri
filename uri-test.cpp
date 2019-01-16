@@ -416,9 +416,9 @@ int test_resolution()
 
   for (auto&& test : tests) {
     uri::reference ref(test.ref);
-    auto resolved = uri::resolve_ref(base, ref);
-    auto resolved_sv = resolved.string_view();
-    if (resolved_sv != test.resolved) {
+    auto const resolved = uri::resolve_ref(base, ref);
+    auto resolved_s = resolved.string();
+    if (resolved_s != test.resolved) {
       LOG(ERROR) << "##### Failure #####";
       LOG(ERROR) << "for input == " << test.ref << '\n';
       LOG(ERROR) << "ref == " << ref;
@@ -468,14 +468,14 @@ int test_comparison()
   // clang-format on
 
   for (auto&& test : tests) {
-    uri::generic lhs{test.lhs, true}; // with normalization
-    uri::generic rhs{test.rhs, true}; // with normalization
+    uri::generic const lhs{test.lhs, true}; // with normalization
+    uri::generic const rhs{test.rhs, true}; // with normalization
     if (lhs != rhs) {
       LOG(ERROR) << lhs << " != " << rhs;
       ++failures;
     }
-    if (lhs.string_view() != test.rhs) {
-      LOG(ERROR) << lhs.string_view() << " != " << test.rhs;
+    if (lhs.string() != test.rhs) {
+      LOG(ERROR) << lhs.string() << " != " << test.rhs;
       LOG(ERROR) << lhs << " != " << test.rhs;
       ++failures;
     }
