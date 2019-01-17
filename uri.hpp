@@ -51,7 +51,7 @@ enum class form : bool {
   normalized,
 };
 
-class uri : boost::operators<uri> {
+class DLL_PUBLIC uri : boost::operators<uri> {
 public:
   virtual ~uri() {} // I don't have to say noexcept, right?
 
