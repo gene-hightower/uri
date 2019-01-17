@@ -2,6 +2,7 @@
 #include "uri.hpp"
 
 #include <iostream>
+#include <utility>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -545,9 +546,9 @@ bool uri::operator==(uri const& rhs) const
 }
 
 generic::generic(std::string uri_in, bool norm)
+  : uri(std::move(uri_in))
 {
   static_assert(sizeof(generic) == sizeof(uri));
-  uri_ = uri_in;
   if (!parse_generic(uri_, parts_)) {
     throw syntax_error();
   }
@@ -567,9 +568,9 @@ generic::generic(components const& uri_in, bool norm)
 }
 
 absolute::absolute(std::string uri_in, bool norm)
+  : uri(std::move(uri_in))
 {
   static_assert(sizeof(absolute) == sizeof(uri));
-  uri_ = uri_in;
   if (!parse_absolute(uri_, parts_)) {
     throw syntax_error();
   }
@@ -589,9 +590,9 @@ absolute::absolute(components const& uri_in, bool norm)
 }
 
 reference::reference(std::string uri_in, bool norm)
+  : uri(std::move(uri_in))
 {
   static_assert(sizeof(reference) == sizeof(uri));
-  uri_ = uri_in;
   if (!parse_reference(uri_, parts_)) {
     throw syntax_error();
   }

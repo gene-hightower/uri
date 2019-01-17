@@ -78,6 +78,11 @@ public:
   bool operator==(uri const& rhs) const;
 
 protected:
+  explicit uri(std::string uri_in)
+    : uri_(std::move(uri_in))
+  {
+  }
+
   std::string uri_;
   components parts_; // All the string_views in parts_ point into uri_.
   form form_{form::unnormalized};
