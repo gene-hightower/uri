@@ -278,21 +278,18 @@ struct IPv6address   : sor<seq<                                               re
 //     IPvFuture     = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
 struct IPvFuture     : seq<one<'v'>, plus<HEXDIG>, one<'.'>, plus<sor<unreserved, sub_delims, one<':'>>>> {};
 
-//       IP-literal  = "[" ( IPv6address / IPvFuture  ) "]"
-//struct IP_literal  : seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
+//     IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
+struct IP_literal    : seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
 
 // RFC 6874 replaced the above rule with:
 
-//     ZoneID        = 1*( unreserved / pct-encoded )
-struct ZoneID        : plus<sor<unreserved, pct_encoded>> {};
+//       ZoneID      = 1*( unreserved / pct-encoded )
+//struct ZoneID      : plus<sor<unreserved, pct_encoded>> {};
 
-//     IPv6addrz     = IPv6address "%25" ZoneID
-struct IPv6addrz     : seq<IPv6address, one<'%'>, ZoneID> {};
+//       IPv6addrz   = IPv6address "%25" ZoneID
+//struct IPv6addrz   : seq<IPv6address, one<'%'>, ZoneID> {};
 
 //     IP-literal    = "[" ( IPv6address / IPv6addrz / IPvFuture  ) "]"
-//     or maybe just:
-//     IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
-struct IP_literal    :  seq<one<'['>, sor<IPv6address, IPvFuture>, one<']'>> {};
 
 struct IP_literal_eof: seq<IP_literal, eof> {};
 
