@@ -53,7 +53,8 @@ enum class form : bool {
 
 class DLL_PUBLIC uri : boost::operators<uri> {
 public:
-  virtual ~uri() {} // I don't have to say noexcept, right?
+  uri() {}
+  virtual ~uri() {}
 
   // clang-format off
   auto scheme()    const { return parts_.scheme; }
