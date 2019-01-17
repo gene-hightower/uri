@@ -213,13 +213,13 @@ struct pct_let_dig   : seq<one<'%'>,
 
 struct u_let_dig     : sor<ALPHA, DIGIT, UTF8_non_ascii, pct_let_dig> {};
 
-struct dash          : sor<one<'-'>, TAOCPP_PEGTL_ISTRING("%2D")> {};
+struct dash          : sor<one<'-'>, TAO_PEGTL_ISTRING("%2D")> {};
 
 struct u_ldh_tail    : star<sor<seq<plus<dash>, u_let_dig>, u_let_dig>> {};
 
 struct u_label       : seq<u_let_dig, u_ldh_tail> {};
 
-struct dot           : sor<one<'.'>, TAOCPP_PEGTL_ISTRING("%2E")> {};
+struct dot           : sor<one<'.'>, TAO_PEGTL_ISTRING("%2E")> {};
 
 // An Internet (RFC-1123) style hostname:
 struct reg_name      : list_tail<u_label, dot> {};
@@ -303,7 +303,7 @@ struct IP_literal_eof: seq<IP_literal, eof> {};
                              seq<one<'6'>, range<'0', '4'>, rep<3, DIGIT>>,
                              seq<range<'0','5'>, rep<4, DIGIT>>,
                              rep_min_max<0, 4, DIGIT>,
-                             TAOCPP_PEGTL_STRING("00000")
+                             TAO_PEGTL_STRING("00000")
                              > {};
 
 //     host          = IP-literal / IPv4address / reg-name
