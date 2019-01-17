@@ -1,5 +1,7 @@
 USES := libglog libidn2 fmt
 
+INCLUDES := uri.hpp dll_spec.h
+
 LIBS := uri
 uri_STEMS := uri
 
