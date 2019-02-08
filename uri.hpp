@@ -68,10 +68,10 @@ public:
   // clang-format on
 
   components const& parts() const& { return parts_; }
-  components parts() && { return parts_; }
+  components        parts() && { return parts_; }
 
   std::string const& string() const& { return uri_; }
-  std::string string() && { return uri_; }
+  std::string        string() && { return uri_; }
 
   bool empty() const { return uri_.empty(); }
 
@@ -85,8 +85,8 @@ protected:
   }
 
   std::string uri_;
-  components parts_; // All the string_views in parts_ point into uri_.
-  form form_{form::unnormalized};
+  components  parts_; // All the string_views in parts_ point into uri_.
+  form        form_{form::unnormalized};
 };
 
 // Derived types add only ctor()s that use different parsers.
@@ -113,7 +113,7 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref);
 
 } // namespace uri
 
-DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
+DLL_PUBLIC std::ostream& operator<<(std::ostream&          os,
                                     uri::components const& uri);
 DLL_PUBLIC std::ostream& operator<<(std::ostream& os, uri::uri const&);
 

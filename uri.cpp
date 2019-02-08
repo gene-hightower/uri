@@ -61,8 +61,7 @@ char const* category_impl::name() const noexcept
 std::string category_impl::message(int ev) const
 {
   switch (static_cast<error>(ev)) {
-  case error::invalid_syntax:
-    return "unable to parse URI";
+  case error::invalid_syntax: return "unable to parse URI";
   }
   return "unknown URI error";
 }
@@ -362,10 +361,12 @@ struct path_segment : seq<opt<one<'/'>>, seq<star<not_at<one<'/'>>, not_at<eof>,
 
 // clang-format on
 
-template <typename Rule> struct action : nothing<Rule> {
+template <typename Rule>
+struct action : nothing<Rule> {
 };
 
-template <> struct action<scheme_colon> {
+template <>
+struct action<scheme_colon> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -376,7 +377,8 @@ template <> struct action<scheme_colon> {
   }
 };
 
-template <> struct action<authority> {
+template <>
+struct action<authority> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -384,7 +386,8 @@ template <> struct action<authority> {
   }
 };
 
-template <> struct action<path_abempty> {
+template <>
+struct action<path_abempty> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -392,7 +395,8 @@ template <> struct action<path_abempty> {
   }
 };
 
-template <> struct action<path_empty> {
+template <>
+struct action<path_empty> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -400,7 +404,8 @@ template <> struct action<path_empty> {
   }
 };
 
-template <> struct action<path_absolute> {
+template <>
+struct action<path_absolute> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -408,7 +413,8 @@ template <> struct action<path_absolute> {
   }
 };
 
-template <> struct action<path_rootless> {
+template <>
+struct action<path_rootless> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -416,7 +422,8 @@ template <> struct action<path_rootless> {
   }
 };
 
-template <> struct action<path_noscheme> {
+template <>
+struct action<path_noscheme> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -424,7 +431,8 @@ template <> struct action<path_noscheme> {
   }
 };
 
-template <> struct action<query> {
+template <>
+struct action<query> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -432,7 +440,8 @@ template <> struct action<query> {
   }
 };
 
-template <> struct action<fragment> {
+template <>
+struct action<fragment> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -442,7 +451,8 @@ template <> struct action<fragment> {
 
 // The _at rule gives us userinfo + '@', so remove the at.
 
-template <> struct action<userinfo_at> {
+template <>
+struct action<userinfo_at> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -453,7 +463,8 @@ template <> struct action<userinfo_at> {
   }
 };
 
-template <> struct action<host> {
+template <>
+struct action<host> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -461,7 +472,8 @@ template <> struct action<host> {
   }
 };
 
-template <> struct action<port> {
+template <>
+struct action<port> {
   template <typename Input>
   static void apply(Input const& in, uri::components& parts)
   {
@@ -469,7 +481,8 @@ template <> struct action<port> {
   }
 };
 
-template <> struct action<path_segment> {
+template <>
+struct action<path_segment> {
   template <typename Input>
   static void apply(Input const& in, std::string& path_seg)
   {
@@ -550,7 +563,7 @@ generic::generic(std::string uri_in, bool norm)
     throw syntax_error();
   }
   if (norm) {
-    uri_ = normalize(parts_);
+    uri_   = normalize(parts_);
     parts_ = components{};
     CHECK(parse_generic(uri_, parts_));
     form_ = form::normalized;
@@ -572,7 +585,7 @@ absolute::absolute(std::string uri_in, bool norm)
     throw syntax_error();
   }
   if (norm) {
-    uri_ = normalize(parts_);
+    uri_   = normalize(parts_);
     parts_ = components{};
     CHECK(parse_absolute(uri_, parts_));
     form_ = form::normalized;
@@ -594,7 +607,7 @@ reference::reference(std::string uri_in, bool norm)
     throw syntax_error();
   }
   if (norm) {
-    uri_ = normalize(parts_);
+    uri_   = normalize(parts_);
     parts_ = components{};
     CHECK(parse_reference(uri_, parts_));
     form_ = form::normalized;
@@ -848,10 +861,10 @@ std::string nfkc(std::string_view str)
   if (str.length() > max_length) {
     throw std::runtime_error("hostname too long");
   }
-  size_t length = max_length;
-  char bfr[max_length];
+  size_t     length = max_length;
+  char       bfr[max_length];
   auto const udata = reinterpret_cast<uint8_t const*>(str.data());
-  auto const ubfr = reinterpret_cast<uint8_t*>(bfr);
+  auto const ubfr  = reinterpret_cast<uint8_t*>(bfr);
   if (u8_normalize(UNINORM_NFKC, udata, str.size(), ubfr, &length) == nullptr) {
     throw std::runtime_error("u8_normalize failure");
   }
@@ -886,8 +899,8 @@ std::string normalize_host(std::string_view host)
 
   norm_host = nfkc(norm_host);
 
-  char* ptr = nullptr;
-  auto code = idn2_to_ascii_8z(norm_host.data(), &ptr, IDN2_TRANSITIONAL);
+  char* ptr  = nullptr;
+  auto  code = idn2_to_ascii_8z(norm_host.data(), &ptr, IDN2_TRANSITIONAL);
   if (code != IDN2_OK) {
     throw std::runtime_error(idn2_strerror(code));
   }
@@ -898,7 +911,7 @@ std::string normalize_host(std::string_view host)
   // on to get the UTF-8 version.
 
   //#ifdef PREFER_UNICODE_HOSTNAME
-  ptr = nullptr;
+  ptr  = nullptr;
   code = idn2_to_unicode_8z8z(norm_host.c_str(), &ptr, IDN2_TRANSITIONAL);
   if (code != IDN2_OK) {
     throw std::runtime_error(idn2_strerror(code));
@@ -935,7 +948,7 @@ DLL_PUBLIC std::string normalize(components uri)
   // Normalize the host name.
   if (uri.host) {
     if (!(is_IPv4address(*uri.host) || is_IP_literal(*uri.host))) {
-      host = normalize_host(*uri.host);
+      host     = normalize_host(*uri.host);
       uri.host = host;
     }
   }
@@ -947,7 +960,7 @@ DLL_PUBLIC std::string normalize(components uri)
   struct special_scheme {
     char const* scheme;
     char const* default_path;
-    uint16_t default_port;
+    uint16_t    default_port;
   };
 
   // Very short list of scheme specific default port numbers.
@@ -984,8 +997,8 @@ DLL_PUBLIC std::string normalize(components uri)
 
   // remove leading zeros
   if (uri.port && !uri.port->empty()) {
-    auto p = strtoul(uri.port->data(), nullptr, 10);
-    port = fmt::format("{}", p);
+    auto p   = strtoul(uri.port->data(), nullptr, 10);
+    port     = fmt::format("{}", p);
     uri.port = port;
   }
 
@@ -1007,23 +1020,23 @@ DLL_PUBLIC std::string normalize(components uri)
     authstream << ':' << *uri.port;
 
   if (uri.userinfo || uri.host || uri.port) {
-    authority = authstream.str();
+    authority     = authstream.str();
     uri.authority = authority;
   }
 
   // Normalize the path.
   if (uri.path) {
-    path = remove_dot_segments(normalize_pct_encoded(*uri.path));
+    path     = remove_dot_segments(normalize_pct_encoded(*uri.path));
     uri.path = path;
   }
 
   if (uri.query) {
-    query = normalize_pct_encoded(*uri.query);
+    query     = normalize_pct_encoded(*uri.query);
     uri.query = query;
   }
 
   if (uri.fragment) {
-    fragment = normalize_pct_encoded(*uri.fragment);
+    fragment     = normalize_pct_encoded(*uri.fragment);
     uri.fragment = fragment;
   }
 
@@ -1041,7 +1054,7 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
   }
 
   components const& base_parts = base.parts();
-  components const& ref_parts = ref.parts();
+  components const& ref_parts  = ref.parts();
 
   components target_parts;
 
@@ -1058,7 +1071,7 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
     }
 
     if (ref_parts.path) {
-      path = remove_dot_segments(*ref_parts.path);
+      path              = remove_dot_segments(*ref_parts.path);
       target_parts.path = path;
     }
 
@@ -1070,7 +1083,7 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
     if (ref_parts.authority) {
       target_parts.authority = *ref_parts.authority;
       if (ref_parts.path) {
-        path = remove_dot_segments(*ref_parts.path);
+        path              = remove_dot_segments(*ref_parts.path);
         target_parts.path = path;
       }
       target_parts.query = ref_parts.query;
@@ -1089,14 +1102,14 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
       else {
         if (starts_with(*ref_parts.path, "/")) {
           if (ref_parts.path) {
-            path = remove_dot_segments(*ref_parts.path);
+            path              = remove_dot_segments(*ref_parts.path);
             target_parts.path = path;
           }
         }
         else {
           // T.path = merge(Base.path, R.path);
           // T.path = remove_dot_segments(T.path);
-          path = remove_dot_segments(merge(base_parts, ref_parts));
+          path              = remove_dot_segments(merge(base_parts, ref_parts));
           target_parts.path = path;
         }
 
@@ -1126,7 +1139,7 @@ DLL_PUBLIC uri resolve_ref(absolute const& base, reference const& ref)
 
 // 5.3.  Component Recomposition
 
-DLL_PUBLIC std::ostream& operator<<(std::ostream& os,
+DLL_PUBLIC std::ostream& operator<<(std::ostream&          os,
                                     uri::components const& uri)
 {
   if (uri.scheme) {

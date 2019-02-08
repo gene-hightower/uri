@@ -23,7 +23,7 @@ bool operator!=(uri::components const& lhs, uri::components const& rhs)
 int test_good()
 {
   struct test_case {
-    char const* uri;
+    char const*     uri;
     uri::components parts;
   };
 
@@ -416,8 +416,8 @@ int test_resolution()
 
   for (auto&& test : tests) {
     uri::reference ref(test.ref);
-    auto const resolved = uri::resolve_ref(base, ref);
-    auto resolved_s = resolved.string();
+    auto const     resolved   = uri::resolve_ref(base, ref);
+    auto           resolved_s = resolved.string();
     if (resolved_s != test.resolved) {
       LOG(ERROR) << "##### Failure #####";
       LOG(ERROR) << "for input == " << test.ref << '\n';
@@ -486,7 +486,8 @@ int test_comparison()
 
 namespace {
 
-template <typename CharT> bool is_small(std::basic_string<CharT> const& str)
+template <typename CharT>
+bool is_small(std::basic_string<CharT> const& str)
 {
   auto const b = reinterpret_cast<CharT const*>(&str);
   auto const e = reinterpret_cast<CharT const*>(&str + 1);
